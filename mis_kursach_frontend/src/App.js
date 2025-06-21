@@ -4,10 +4,12 @@ import Home from './components/Home';
 import Bookings from './components/Bookings';
 import Complaints from "./components/Complaints";
 import Payments from "./components/Payments";
+import Navbar from './components/Navbar';
 
 function App() {
     return (
         <Router>
+            <Navbar/>
             <div className="App">
                 <Routes>
                     <Route path="/" element={<Home />} />
