@@ -1,0 +1,31 @@
+.admin-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 24px;
+    background-color: #f9fafb;
+    border-top: 1px solid #e5e7eb;
+    font-size: 14px;
+    color: #6b7280; /* серый */
+}
+
+.footer-section {
+    flex: 1;
+}
+
+.footer-section.center {
+    text-align: center;
+}
+
+.footer-section.right {
+    text-align: right;
+}
+
+.footer-section a {
+    color: #3b82f6;
+    text-decoration: none;
+}
+
+.footer-section a:hover {
+    text-decoration: underline;
+}

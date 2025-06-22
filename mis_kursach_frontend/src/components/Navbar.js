@@ -24,13 +24,18 @@ const Navbar = () => {
                     </NavLink>
                 </li>
                 <li>
+                    <NavLink to="/complaints" activeClassName="active">
+                        Жалобы
+                    </NavLink>
+                </li>
+                <li>
                     <NavLink to="/bookings" activeClassName="active">
                         Бронирования
                     </NavLink>
                 </li>
                 <li>
-                    <NavLink to="/complaints" activeClassName="active">
-                        Жалобы
+                    <NavLink to="/rooms" activeClassName="active">
+                        Номера
                     </NavLink>
                 </li>
                 <li>

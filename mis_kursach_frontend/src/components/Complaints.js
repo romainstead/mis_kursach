@@ -40,7 +40,6 @@ function Complaints() {
                 <th>ID</th>
                 <th>Дата и время жалобы</th>
                 <th>ID брони</th>
-                <th>Номер</th>
                 <th>Статус</th>
                 <th>Номер</th>
                 <th>Действия</th>
@@ -52,7 +51,6 @@ function Complaints() {
                     <td>{c.id}</td>
                     <td>{new Date(c.issue_date).toLocaleString()}</td>
                     <td>{c.booking_id}</td>
-                    <td>{c.booking?.number}</td>
                     <td>{c.status}</td>
                     <td>{c.room}</td>
                     <td className="dropdown-cell">

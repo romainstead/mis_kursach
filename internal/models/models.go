@@ -21,6 +21,19 @@ type Booking struct {
 	Payments   []Payment     `json:"payments" db:"payments"`
 }
 
+type CreateBookingInput struct {
+	StartDate           time.Time  `json:"start_date"`
+	EndDate             time.Time  `json:"end_date"`
+	CategoryCode        int        `json:"category_code"`
+	CheckIn             *time.Time `json:"check_in"`
+	CheckOut            *time.Time `json:"check_out"`
+	RoomNumber          int        `json:"room_number"`
+	BabyBed             bool       `json:"baby_bed"`
+	GuestName           string     `json:"guest_name"`
+	GuestPassportNumber string     `json:"guest_passport_number"`
+	GuestPhoneNumber    string     `json:"guest_phone_number"`
+}
+
 type BookingResponse struct {
 	ID             int        `json:"id"`
 	StartDate      time.Time  `json:"start_date" db:"start_date"`
@@ -161,4 +174,17 @@ type TariffCoefficient struct {
 type Holiday struct {
 	HolidayDate time.Time `json:"holiday_date"`
 	Name        string    `json:"name"`
+}
+
+type SetMetricsResponse struct {
+	Occupancy             int `json:"occupancy"`
+	UnpaidBookings        int `json:"unpaid_bookings"`
+	CurrentBookings       int `json:"current_bookings"`
+	OpenComplaints        int `json:"open_complaints"`
+	FreeRooms             int `json:"free_rooms"`
+	RoomsUnderMaintenance int `json:"rooms_under_maintenance"`
+	Revenue7Days          int `json:"revenue_7_days"`
+	RevPar                int `json:"revpar"`
+	NewGuests7Days        int `json:"new_guests_7_days"`
+	RevPac                int `json:"revpac"`
 }
