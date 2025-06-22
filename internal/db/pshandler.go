@@ -25,6 +25,7 @@ func PsRoutes(dbpool *pgxpool.Pool) chi.Router {
 	r.Get("/GetComplaintByID/{id}", handler.GetComplaintByID)
 	r.Get("/GetPaymentByID/{id}", handler.GetPaymentByID)
 	r.Post("/CreateBooking", handler.CreateBooking)
+	r.Post("/CreateComplaint", handler.CreateComplaint)
 	return r
 }
 
@@ -76,12 +77,7 @@ func (p *PsHandler) CreateBooking(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	err := CreateBooking(p.dbpool,
-		b.StartDate, b.EndDate,
-		b.CategoryCode, b.CheckIn,
-		b.CheckOut, b.RoomNumber,
-		b.BabyBed, b.GuestName,
-		b.GuestPassportNumber, b.GuestPhoneNumber)
+	err := CreateBooking(p.dbpool, b)
 	if err != nil {
 		http.Error(w, `{"error": "failed to create booking"}`, http.StatusBadRequest)
 		log.Printf("Error creating booking: %v", err)
@@ -127,6 +123,24 @@ func (p *PsHandler) GetComplaintByID(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"error": "failed to encode response"}`, http.StatusInternalServerError)
 		log.Printf("Error encoding complaint: %v", err)
 	}
+}
+
+func (p *PsHandler) CreateComplaint(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	var c models.CreateComplaintInput
+	if err := json.NewDecoder(r.Body).Decode(&c); err != nil {
+		http.Error(w, `{"error": "invalid request body"}`, http.StatusBadRequest)
+		log.Printf("Error decoding complaint: %v", err)
+		return
+	}
+	defer r.Body.Close()
+	err := CreateComplaint(p.dbpool, c)
+	if err != nil {
+		http.Error(w, `{"error": "failed to create complaint"}`, http.StatusBadRequest)
+		log.Printf("Error creating complaint: %v", err)
+		return
+	}
+	json.NewEncoder(w).Encode(map[string]string{"message": "Complaint created successfully"})
 }
 
 func (p *PsHandler) GetAllPayments(w http.ResponseWriter, r *http.Request) {

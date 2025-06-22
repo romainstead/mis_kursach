@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"log"
 	"mis_kursach_backend/internal/models"
 	"time"
 )
@@ -67,10 +68,8 @@ func GetBookingByID(dbpool *pgxpool.Pool, id int) (models.Booking, error) {
 	return booking, nil
 }
 
-func CreateBooking(dbpool *pgxpool.Pool, startDate time.Time,
-	endDate time.Time, categoryCode int,
-	checkIn *time.Time, checkOut *time.Time,
-	roomNumber int, babyBed bool, guestName string, guestPassportNumber string, guestPhoneNumber string) error {
+func CreateBooking(dbpool *pgxpool.Pool, b models.CreateBookingInput) error {
+
 	var tariffs []models.Tariff
 	var discounts []models.Discount
 	var guests []models.Guest
@@ -78,7 +77,7 @@ func CreateBooking(dbpool *pgxpool.Pool, startDate time.Time,
 	var discountID int
 	var guestID int
 	var bookingID int
-	nights := int(endDate.Sub(startDate).Hours() / 24)
+	nights := int(b.EndDate.Sub(b.StartDate).Hours() / 24)
 	if nights <= 0 {
 		return fmt.Errorf("nights is zero or lower than zero")
 	}
@@ -93,17 +92,17 @@ func CreateBooking(dbpool *pgxpool.Pool, startDate time.Time,
 		return fmt.Errorf("error fetching discounts from db: %v", err)
 	}
 
-	err = pgxscan.Select(context.Background(), dbpool, &guests, `SELECT * FROM GUESTS G WHERE G.PASSPORT_NO = $1`, guestPassportNumber)
+	err = pgxscan.Select(context.Background(), dbpool, &guests, `SELECT * FROM GUESTS G WHERE G.PASSPORT_NO = $1`, b.GuestPassportNumber)
 	if len(guests) == 0 {
 		// если гостя нет, то добавляем его в таблицу и сразу вытаскиваем айди
 		err = pgxscan.Get(context.Background(), dbpool, &guestID,
-			`INSERT INTO GUESTS(name, phone_number, passport_no) VALUES ($1, $2, $3) RETURNING ID`, guestName, guestPhoneNumber, guestPassportNumber)
+			`INSERT INTO GUESTS(name, phone_number, passport_no) VALUES ($1, $2, $3) RETURNING ID`, b.GuestName, b.GuestPhoneNumber, b.GuestPassportNumber)
 		if err != nil {
 			return fmt.Errorf("error inserting guest: %v", err)
 		}
 	}
 	// ретривим айди гостя
-	err = pgxscan.Get(context.Background(), dbpool, &guestID, `SELECT G.ID FROM GUESTS G WHERE G.PASSPORT_NO = $1`, guestPassportNumber)
+	err = pgxscan.Get(context.Background(), dbpool, &guestID, `SELECT G.ID FROM GUESTS G WHERE G.PASSPORT_NO = $1`, b.GuestPassportNumber)
 	if err != nil {
 		return fmt.Errorf("error fetching guest: %v", err)
 	}
@@ -130,7 +129,7 @@ func CreateBooking(dbpool *pgxpool.Pool, startDate time.Time,
 	}
 	var basePrice float64
 	for _, tariff := range tariffs {
-		if tariff.CategoryCode == categoryCode {
+		if tariff.CategoryCode == b.CategoryCode {
 			basePrice = tariff.BasePrice
 			break
 		}
@@ -148,13 +147,17 @@ func CreateBooking(dbpool *pgxpool.Pool, startDate time.Time,
 					check_in, check_out,
 					baby_bed, booking_sum,
 					discount_id, total_sum) VALUES (1, $1, $2, $3, $4, $5, $6, $7, $8) RETURNING ID`,
-		startDate, endDate, checkIn, checkOut, babyBed, bookingSum, discountID, totalSum)
+		b.StartDate, b.EndDate, b.CheckIn, b.CheckOut, b.BabyBed, bookingSum, discountID, totalSum)
 	if err != nil {
 		return fmt.Errorf("error inserting booking: %v", err)
 	}
-	_, err = dbpool.Query(context.Background(),
+	_, err = dbpool.Exec(context.Background(),
 		`INSERT INTO GUESTS_IN_BOOKINGS (GUEST_ID, BOOKING_ID, ROOM)
-			VALUES ($1, $2, $3)`, guestID, bookingID, roomNumber)
+			VALUES ($1, $2, $3)`, guestID, bookingID, b.RoomNumber)
+	err = CreatePayment(dbpool, b, totalSum, bookingID)
+	if err != nil {
+		return fmt.Errorf("error inserting payment: %v", err)
+	}
 	return err
 }
 
@@ -202,6 +205,16 @@ func GetComplaintByID(dbpool *pgxpool.Pool, id int) (models.Complaint, error) {
 	return complaint, nil
 }
 
+func CreateComplaint(dbpool *pgxpool.Pool, complaint models.CreateComplaintInput) error {
+	_, err := dbpool.Exec(context.Background(),
+		`INSERT INTO COMPLAINTS(reason, commentary, issue_date, booking_id, status_code) VALUES ($1, $2, $3, $4, $5)`,
+		complaint.Reason, complaint.Commentary, time.Now(), complaint.BookingID, 1)
+	if err != nil {
+		return fmt.Errorf("error inserting complaint: %v", err)
+	}
+	return nil
+}
+
 func GetAllPayments(dbpool *pgxpool.Pool) ([]models.PaymentResponse, error) {
 	var payments []models.PaymentResponse
 	err := pgxscan.Select(context.Background(), dbpool, &payments,
@@ -228,6 +241,17 @@ func GetPaymentByID(dbpool *pgxpool.Pool, id int) (models.Payment, error) {
 		return payment, fmt.Errorf("error getting payment: %v", err)
 	}
 	return payment, nil
+}
+
+func CreatePayment(dbpool *pgxpool.Pool, b models.CreateBookingInput, amount float64, bookingID int) error {
+	_, err := dbpool.Exec(context.Background(),
+		`INSERT INTO Payments(booking_id, pay_date, amount, method_code, status_code) VALUES ($1, $2, $3, $4, $5)`,
+		bookingID, time.Now(), amount, b.MethodCode, 1)
+	if err != nil {
+		log.Printf("error inserting payment: %v", err)
+		return fmt.Errorf("error inserting payment: %v", err)
+	}
+	return nil
 }
 
 type GetAllRoomsResult struct {

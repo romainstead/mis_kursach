@@ -22,7 +22,6 @@ func main() {
 	dsn := fmt.Sprintf("user=%s password=%s host=%s port=%s dbname=%s sslmode=disable",
 		config.DBConfig.Username, config.DBConfig.Password, config.DBConfig.Host, config.DBConfig.Port,
 		config.DBConfig.Name)
-	//database, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	dbpool, err := pgxpool.New(context.Background(), dsn)
 	if err != nil {
 		log.Fatalf("Unable to connect to database: %v", err)
@@ -40,10 +39,9 @@ func main() {
 	}))
 	r.Use(middleware.Logger)
 	r.Mount("/api", db.PsRoutes(dbpool))
-
+	log.Print("Listening and serving HTTP on port 8080")
 	err = http.ListenAndServe(":8080", r)
 	if err != nil {
 		log.Fatalf("Unable to start server: %v", err)
 	}
-	log.Print("Listening and serving HTTP on port 8080")
 }

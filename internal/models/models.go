@@ -32,6 +32,7 @@ type CreateBookingInput struct {
 	GuestName           string     `json:"guest_name"`
 	GuestPassportNumber string     `json:"guest_passport_number"`
 	GuestPhoneNumber    string     `json:"guest_phone_number"`
+	MethodCode          int        `json:"payment_method_code"`
 }
 
 type BookingResponse struct {
@@ -60,10 +61,16 @@ type Complaint struct {
 	Reason     string          `json:"reason"`
 	Commentary *string         `json:"commentary"`
 	IssueDate  time.Time       `json:"issue_date"`
-	BookingID  int             `json:"booking_id"`
+	BookingID  *int            `json:"booking_id"`
 	StatusCode int             `json:"status_code"`
 	Booking    Booking         `json:"booking"`
 	Status     ComplaintStatus `json:"status"`
+}
+
+type CreateComplaintInput struct {
+	Reason     string  `json:"reason"`
+	Commentary *string `json:"commentary"`
+	BookingID  *int    `json:"booking_id"`
 }
 
 type ComplaintResponse struct {
@@ -71,7 +78,7 @@ type ComplaintResponse struct {
 	Reason     string    `json:"reason"`
 	Commentary *string   `json:"commentary"`
 	IssueDate  time.Time `json:"issue_date"`
-	BookingID  int       `json:"booking_id"`
+	BookingID  *int      `json:"booking_id"`
 	Status     string    `json:"status"`
 	Room       int       `json:"room"`
 }
