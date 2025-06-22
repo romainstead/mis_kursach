@@ -274,32 +274,144 @@ func GetAllRooms(dbpool *pgxpool.Pool) ([]GetAllRoomsResult, error) {
 	return rooms, nil
 }
 
-//func SetMetrics(dbpool *pgxpool.Pool) (models.SetMetricsResponse, error) {
-//	var metrics models.SetMetricsResponse
-//	err := dbpool.QueryRow(context.Background(), `SELECT
-//	ROUND(
-//	(
-//			SELECT
-//				COUNT(G.PASSPORT_NO)
-//			FROM
-//				BOOKINGS B
-//				JOIN BOOKING_STATUSES BS ON BS.STATUS_CODE = B.STATUS_CODE
-//				JOIN GUESTS_IN_BOOKINGS GIB ON GIB.BOOKING_ID = B.ID
-//				JOIN GUESTS G ON G.ID = GIB.GUEST_ID
-//			WHERE
-//				BS.STATUS_CODE = 1
-//		) * 100.0
-//		/
-//		(
-//			SELECT
-//				SUM(RC.CAPACITY)
-//			FROM
-//				ROOMS R
-//				JOIN ROOM_CATEGORIES RC ON R.CATEGORY_CODE = RC.CODE
-//		) * 1.0
-//	, 0) AS OCCUPANCY_RATIO`).Scan(&metrics.Occupancy)
-//	if err != nil {
-//		return metrics, fmt.Errorf("error setting metrics: %v", err)
-//	}
-//
-//}
+func SetMetrics(dbpool *pgxpool.Pool) (models.SetMetricsResponse, error) {
+	var metrics models.SetMetricsResponse
+	err := dbpool.QueryRow(context.Background(), `SELECT
+	ROUND(
+	(
+			SELECT
+				COUNT(G.PASSPORT_NO)
+			FROM
+				BOOKINGS B
+				JOIN BOOKING_STATUSES BS ON BS.STATUS_CODE = B.STATUS_CODE
+				JOIN GUESTS_IN_BOOKINGS GIB ON GIB.BOOKING_ID = B.ID
+				JOIN GUESTS G ON G.ID = GIB.GUEST_ID
+			WHERE
+				BS.STATUS_CODE = 1
+		) * 100.0
+		/
+		(
+			SELECT
+				SUM(RC.CAPACITY)
+			FROM
+				ROOMS R
+				JOIN ROOM_CATEGORIES RC ON R.CATEGORY_CODE = RC.CODE
+		) * 1.0
+	, 0) AS OCCUPANCY_RATIO`).Scan(&metrics.Occupancy)
+
+	if err != nil {
+		return metrics, fmt.Errorf("error setting metrics: %v", err)
+	}
+	err = dbpool.QueryRow(context.Background(),
+		`SELECT
+		COUNT(*) AS UNPAID_BOOKINGS
+		FROM
+			BOOKINGS B
+			LEFT JOIN PAYMENTS P ON B.ID = P.BOOKING_ID
+		WHERE
+			BOOKING_ID IS NULL`).Scan(&metrics.UnpaidBookings)
+	if err != nil {
+		return metrics, fmt.Errorf("error setting metrics: %v", err)
+	}
+
+	err = dbpool.QueryRow(context.Background(),
+		`SELECT COUNT(ID) AS ACTIVE_BOOKINGS FROM BOOKINGS B WHERE B.STATUS_CODE = 1`).Scan(&metrics.CurrentBookings)
+	if err != nil {
+		return metrics, fmt.Errorf("error setting metrics: %v", err)
+	}
+
+	err = dbpool.QueryRow(context.Background(),
+		`SELECT COUNT(ID) AS OPEN_COMPLAINTS FROM COMPLAINTS WHERE STATUS_CODE = 1`).Scan(&metrics.OpenComplaints)
+	if err != nil {
+		return metrics, fmt.Errorf("error setting metrics: %v", err)
+	}
+
+	err = dbpool.QueryRow(context.Background(),
+		`SELECT
+				COUNT(*)
+			FROM
+			(
+				SELECT
+					R.NUMBER
+				FROM
+					ROOMS R
+				EXCEPT
+				SELECT
+					GIB.ROOM AS NUMBER
+				FROM
+					BOOKINGS B
+				JOIN GUESTS_IN_BOOKINGS GIB ON B.ID = GIB.BOOKING_ID
+				WHERE
+					B.STATUS_CODE = 1
+		) AS FREE_ROOMS`).Scan(&metrics.FreeRooms)
+	if err != nil {
+		return metrics, fmt.Errorf("error setting metrics: %v", err)
+	}
+	err = dbpool.QueryRow(context.Background(),
+		`SELECT COUNT(R.NUMBER) 
+			FROM ROOMS R 
+    		JOIN ROOM_STATES RS ON R.STATE_CODE = RS.STATE_CODE 
+			WHERE R.STATE_CODE = 3`).Scan(&metrics.RoomsUnderMaintenance)
+	if err != nil {
+		return metrics, fmt.Errorf("error setting metrics: %v", err)
+	}
+
+	err = dbpool.QueryRow(context.Background(),
+		`SELECT
+				SUM(AMOUNT) AS REVENUE_7DAYS
+			FROM
+				PAYMENTS
+			WHERE
+				PAY_DATE < (NOW() + INTERVAL '7 DAYS')
+				AND PAY_DATE > (NOW() - INTERVAL '7 DAYS')`).Scan(&metrics.Revenue7Days)
+	if err != nil {
+		return metrics, fmt.Errorf("error setting metrics: %v", err)
+	}
+
+	err = dbpool.QueryRow(context.Background(),
+		`SELECT
+	ROUND(
+		(
+			SELECT
+				SUM(AMOUNT)
+			FROM
+				PAYMENTS P
+		) / (
+			SELECT
+				COUNT(*)
+			FROM
+				ROOMS
+		),
+		2
+	) AS REVPAR`).Scan(&metrics.RevPar)
+	if err != nil {
+		return metrics, fmt.Errorf("error setting metrics: %v", err)
+	}
+
+	err = dbpool.QueryRow(context.Background(),
+		`SELECT
+				COUNT(*) AS NEW_GUESTS_7DAYS
+			FROM
+				BOOKINGS
+			WHERE
+				START_DATE < NOW() + INTERVAL '7 DAYS'
+			AND START_DATE > NOW() - INTERVAL '7 DAYS'`).Scan(&metrics.NewGuests7Days)
+	if err != nil {
+		return metrics, fmt.Errorf("error setting metrics: %v", err)
+	}
+
+	err = dbpool.QueryRow(context.Background(),
+		`SELECT
+			COALESCE(SUM(AMOUNT), 0) AS REVPAC_7DAYS
+		FROM
+			PAYMENTS P
+			JOIN BOOKINGS B ON P.BOOKING_ID = B.ID
+			JOIN GUESTS_IN_BOOKINGS GIB ON GIB.BOOKING_ID = P.BOOKING_ID
+			JOIN GUESTS G ON G.ID = GIB.GUEST_ID
+		WHERE 
+		    START_DATE < NOW() + INTERVAL '7 DAYS' `).Scan(&metrics.RevPac)
+	if err != nil {
+		return metrics, fmt.Errorf("error setting metrics: %v", err)
+	}
+	return metrics, nil
+}

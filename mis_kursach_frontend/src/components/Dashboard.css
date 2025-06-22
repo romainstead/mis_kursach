@@ -62,3 +62,25 @@
 .card.small.alter p {
     color: #1f2937 !important; /* Читаемый тёмный текст */
 }
+.loader-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    min-height: 300px;
+}
+
+.loader {
+    border: 8px solid #f3f3f3;
+    border-top: 8px solid #FBBA00;
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+

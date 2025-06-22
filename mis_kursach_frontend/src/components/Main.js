@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import axios from 'axios';
 import './Dashboard.css';
 import { Doughnut } from 'react-chartjs-2';
 import {
@@ -12,21 +13,38 @@ ChartJS.register(ArcElement, Tooltip, Legend);
 
 
 function Dashboard() {
-    const [metrics, setMetrics] = useState({
-        occupancy: 72,
-        unpaidBookings: 5,
-        currentBookings: 18,
-        openComplaints: 3,
-        freeRooms: 12,
-        maintenanceRooms: 2,
-        revenueLast7Days: 126000,
-        revPar: 4500,
-        newGuests7Days: 9,
-        revPac: 2800,
-    });
+    const [metrics, setMetrics] = useState(null);
 
-    // fetch данных можно вставить сюда
+    useEffect(() => {
+        axios.get('http://127.0.0.1:8080/api/SetMetrics')
+            .then(res => {
+                const data = res.data;
+                setMetrics({
+                    occupancy: data.occupancy,
+                    unpaidBookings: data.unpaid_bookings,
+                    currentBookings: data.current_bookings,
+                    openComplaints: data.open_complaints,
+                    freeRooms: data.free_rooms,
+                    maintenanceRooms: data.rooms_under_maintenance,
+                    revenueLast7Days: data.revenue_7_days,
+                    revPar: data.revpar,
+                    newGuests7Days: data.new_guests_7_days,
+                    revPac: data.revpac,
+                });
+            })
+            .catch(err => {
+                console.error('ЕБАНУЛОСЬ ПРИ ЗАПРОСЕ:', err);
+            });
+    }, []);
 
+
+    if (!metrics) {
+        return (
+            <div className="dashboard loader-container">
+                <div className="loader"></div>
+            </div>
+        );
+    }
     const doughnutData = {
         datasets: [
             {
@@ -36,14 +54,13 @@ function Dashboard() {
             },
         ],
     };
-
     return (
         <div className="dashboard">
             <div className="big-cards">
                 <div className="card big">
                     <h3>Текущая загрузка</h3>
                     <div className="chart-wrapper">
-                        <Doughnut data={doughnutData} options={{ cutout: '70%' }} />
+                        <Doughnut data={doughnutData} options={{cutout: '70%'}}/>
                         <div className="chart-center">{metrics.occupancy}%</div>
                     </div>
                 </div>

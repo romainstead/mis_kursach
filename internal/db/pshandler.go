@@ -8,6 +8,7 @@ import (
 	"mis_kursach_backend/internal/models"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 type PsHandler struct {
@@ -21,12 +22,30 @@ func PsRoutes(dbpool *pgxpool.Pool) chi.Router {
 	r.Get("/GetAllComplaints", handler.GetAllComplaints)
 	r.Get("/GetAllPayments", handler.GetAllPayments)
 	r.Get("/GetAllRooms", handler.GetAllRooms)
+
 	r.Get("/GetBookingByID/{id}", handler.GetBookingByID)
 	r.Get("/GetComplaintByID/{id}", handler.GetComplaintByID)
 	r.Get("/GetPaymentByID/{id}", handler.GetPaymentByID)
+
 	r.Post("/CreateBooking", handler.CreateBooking)
 	r.Post("/CreateComplaint", handler.CreateComplaint)
+	r.Get("/SetMetrics", handler.SetMetrics)
 	return r
+}
+
+func (p *PsHandler) SetMetrics(w http.ResponseWriter, r *http.Request) {
+	time.Sleep(3 * time.Second)
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	metrics, err := SetMetrics(p.dbpool)
+	if err != nil {
+		http.Error(w, `{"error": "failed to set metrics"}`, http.StatusInternalServerError)
+		log.Printf("Error getting setting metrics: %v", err)
+		return
+	}
+	if err := json.NewEncoder(w).Encode(metrics); err != nil {
+		http.Error(w, `{"error": "failed to encode metrics"}`, http.StatusInternalServerError)
+		log.Printf("Error encoding metrics: %v", err)
+	}
 }
 
 func (p *PsHandler) GetAllBookings(w http.ResponseWriter, r *http.Request) {
