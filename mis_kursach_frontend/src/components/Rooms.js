@@ -1,11 +1,7 @@
 import { Link } from 'react-router-dom';
 import React, { useState, useEffect } from 'react';
 import "./RoomsTable.css"
-import axios from 'axios';
-
-const api = axios.create({
-    baseURL: 'http://localhost:8080/api',
-});
+import api from "../utils/api";
 
 function Rooms() {
     const [rooms, setRooms] = useState([]);

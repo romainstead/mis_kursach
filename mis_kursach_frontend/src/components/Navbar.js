@@ -39,7 +39,7 @@ const Navbar = () => {
                 {username && (
                     <li>
                         <NavLink to="/user" className={({ isActive }) => isActive ? "active user-link" : "user-link"}>
-                            <FaUserCircle style={{ fontSize: '20px', marginRight: '8px', verticalAlign: 'middle' }} />
+                            <FaUserCircle style={{ fontSize: '20px', marginRight: '5px', verticalAlign: 'middle' }} />
                             {username}
                         </NavLink>
                     </li>

@@ -1,11 +1,7 @@
 import { Link } from 'react-router-dom';
 import React, { useState, useEffect } from 'react';
 import "./BookingsTable.css"
-import axios from 'axios';
-
-const api = axios.create({
-    baseURL: 'http://localhost:8080/api',
-});
+import api from "../utils/api";
 
 function Bookings() {
     const [bookings, setBookings] = useState([]);
@@ -17,7 +13,7 @@ function Bookings() {
     };
 
     useEffect(() => {
-        api.get('/GetAllBookings')
+        api.get('http://127.0.0.1:8080/api/GetAllBookings')
             .then(response => {
                 setBookings(response.data);
                 setLoading(false);

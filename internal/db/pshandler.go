@@ -37,13 +37,13 @@ func PsRoutes(dbpool *pgxpool.Pool, config configs.Config) chi.Router {
 
 		r.Post("/CreateBooking", handler.CreateBooking)
 		r.Post("/CreateComplaint", handler.CreateComplaint)
-		r.Post("/CreateUser", handler.CreateUser)
 
 		r.Get("/SetMetrics", handler.SetMetrics)
 
 	})
 
 	r.Group(func(r chi.Router) {
+		r.Post("/CreateUser", handler.CreateUser)
 		r.Post("/login", handler.Login)
 		r.Post("/logout", handler.Logout)
 	})
@@ -52,7 +52,7 @@ func PsRoutes(dbpool *pgxpool.Pool, config configs.Config) chi.Router {
 }
 
 func (p *PsHandler) SetMetrics(w http.ResponseWriter, r *http.Request) {
-	time.Sleep(3 * time.Second)
+	time.Sleep(1 * time.Second)
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	metrics, err := SetMetrics(p.dbpool)
 	if err != nil {
@@ -287,6 +287,7 @@ func (p *PsHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 	response := make(map[string]string)
 	response["token"] = tokenString
+	response["username"] = user.Username
 	json.NewEncoder(w).Encode(response)
 }
 

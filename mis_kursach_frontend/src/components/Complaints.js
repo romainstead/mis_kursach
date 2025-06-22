@@ -1,6 +1,7 @@
 // src/components/Complaints.js
 import React, { useState, useEffect } from 'react';
 import "./ComplaintsTable.css"; // CSS-файл со стилями
+import api from "../utils/api";
 
 function Complaints() {
     const [openDropdownId, setOpenDropdownId] = useState(null);
@@ -11,17 +12,10 @@ function Complaints() {
         setOpenDropdownId(openDropdownId === id ? null : id);
     };
 
-
     useEffect(() => {
-        fetch('http://localhost:8080/api/GetAllComplaints')
+        api.get('/GetAllComplaints')
             .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                setComplaints(data);
+                setComplaints(response.data)
                 setLoading(false);
             })
             .catch(error => {

@@ -27,9 +27,7 @@ function Layout() {
                     <Route
                         path="/"
                         element={
-                            localStorage.getItem("token")
-                                ? <Navigate to="/dashboard" />
-                                : <Navigate to="/login" />
+                                <Navigate to="/login" />
                         }
                     />
                     <Route path="/main" element={<PrivateRoute><Main /></PrivateRoute>} />
