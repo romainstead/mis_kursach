@@ -1,4 +1,7 @@
 .admin-footer {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -6,7 +9,7 @@
     background-color: #f9fafb;
     border-top: 1px solid #e5e7eb;
     font-size: 14px;
-    color: #6b7280; /* серый */
+    color: #6b7280;
 }
 
 .footer-section {

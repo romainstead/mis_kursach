@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import api from "../utils/api";
 import './Dashboard.css';
 import { Doughnut } from 'react-chartjs-2';
 import {
@@ -14,9 +14,10 @@ ChartJS.register(ArcElement, Tooltip, Legend);
 
 function Dashboard() {
     const [metrics, setMetrics] = useState(null);
+    const [error, setError] = useState(null);
 
     useEffect(() => {
-        axios.get('http://127.0.0.1:8080/api/SetMetrics')
+        api.get('http://127.0.0.1:8080/api/SetMetrics')
             .then(res => {
                 const data = res.data;
                 setMetrics({
@@ -33,7 +34,7 @@ function Dashboard() {
                 });
             })
             .catch(err => {
-                console.error('ЕБАНУЛОСЬ ПРИ ЗАПРОСЕ:', err);
+                console.error('Ошибка при запросе:', err);
             });
     }, []);
 
@@ -86,7 +87,6 @@ function Dashboard() {
                 <div className="card small alter"><h4>Новые гости (7 дней)</h4><p>{metrics.newGuests7Days}</p></div>
                 <div className="card small"><h4>RevPAC</h4><p>{metrics.revPac}₽</p></div>
             </div>
-
         </div>
     );
 }

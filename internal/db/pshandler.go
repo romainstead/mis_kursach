@@ -3,33 +3,51 @@ package db
 import (
 	"encoding/json"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/jwtauth/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"log"
+	"mis_kursach_backend/configs"
 	"mis_kursach_backend/internal/models"
+	"mis_kursach_backend/internal/services"
 	"net/http"
 	"strconv"
 	"time"
 )
 
 type PsHandler struct {
-	dbpool *pgxpool.Pool
+	dbpool  *pgxpool.Pool
+	jwtauth *jwtauth.JWTAuth
 }
 
-func PsRoutes(dbpool *pgxpool.Pool) chi.Router {
+func PsRoutes(dbpool *pgxpool.Pool, config configs.Config) chi.Router {
 	r := chi.NewRouter()
-	handler := &PsHandler{dbpool: dbpool}
-	r.Get("/GetAllBookings", handler.GetAllBookings)
-	r.Get("/GetAllComplaints", handler.GetAllComplaints)
-	r.Get("/GetAllPayments", handler.GetAllPayments)
-	r.Get("/GetAllRooms", handler.GetAllRooms)
+	tokenAuth := services.GenerateAuthToken(config)
+	handler := &PsHandler{dbpool: dbpool, jwtauth: tokenAuth}
+	r.Group(func(r chi.Router) {
+		r.Use(jwtauth.Verifier(tokenAuth))
+		r.Use(jwtauth.Authenticator(tokenAuth))
+		r.Get("/GetAllBookings", handler.GetAllBookings)
+		r.Get("/GetAllComplaints", handler.GetAllComplaints)
+		r.Get("/GetAllPayments", handler.GetAllPayments)
+		r.Get("/GetAllRooms", handler.GetAllRooms)
 
-	r.Get("/GetBookingByID/{id}", handler.GetBookingByID)
-	r.Get("/GetComplaintByID/{id}", handler.GetComplaintByID)
-	r.Get("/GetPaymentByID/{id}", handler.GetPaymentByID)
+		r.Get("/GetBookingByID/{id}", handler.GetBookingByID)
+		r.Get("/GetComplaintByID/{id}", handler.GetComplaintByID)
+		r.Get("/GetPaymentByID/{id}", handler.GetPaymentByID)
 
-	r.Post("/CreateBooking", handler.CreateBooking)
-	r.Post("/CreateComplaint", handler.CreateComplaint)
-	r.Get("/SetMetrics", handler.SetMetrics)
+		r.Post("/CreateBooking", handler.CreateBooking)
+		r.Post("/CreateComplaint", handler.CreateComplaint)
+		r.Post("/CreateUser", handler.CreateUser)
+
+		r.Get("/SetMetrics", handler.SetMetrics)
+
+	})
+
+	r.Group(func(r chi.Router) {
+		r.Post("/login", handler.Login)
+		r.Post("/logout", handler.Logout)
+	})
+
 	return r
 }
 
@@ -216,4 +234,63 @@ func (p *PsHandler) GetAllRooms(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"error": "failed to encode response"}`, http.StatusInternalServerError)
 		log.Printf("Error encoding rooms: %v", err)
 	}
+}
+
+func (p *PsHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
+	var userReqBody models.UserRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&userReqBody); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"error": "invalid request body"}`))
+		return
+	}
+	UserID, err := CreateUser(p.dbpool, userReqBody)
+	if err != nil {
+		http.Error(w, `{"error": "failed to create user"}`, http.StatusInternalServerError)
+		log.Printf("Error creating user: %v", err)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	response := make(map[string]string)
+	response["message"] = "user created successfully"
+	response["user_id"] = strconv.Itoa(UserID)
+	json.NewEncoder(w).Encode(response)
+}
+
+func (p *PsHandler) Login(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	userReqBody := new(models.UserRequestBody)
+	if err := json.NewDecoder(r.Body).Decode(&userReqBody); err != nil {
+		log.Printf("Invalid request body: %v", err)
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"error": "invalid request body"}`))
+		log.Printf("Error decoding request body: %v", err)
+		return
+	}
+	user, err := GetUser(p.dbpool, userReqBody)
+	if err != nil {
+		http.Error(w, `{"error": "failed to get user"}`, http.StatusBadRequest)
+		log.Printf("Failed to get user: %v", err)
+		return
+	}
+	if !services.CheckPasswordHash(userReqBody.Password, user.Hash) {
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte(`{"error": "incorrect password"}`))
+		return
+	}
+	claims := map[string]interface{}{
+		"user_id":  user.ID,
+		"username": user.Username,
+		"exp":      time.Now().Add(time.Hour * 24).Unix()}
+	_, tokenString, err := p.jwtauth.Encode(claims)
+	if err != nil {
+		http.Error(w, `{"error": "failed to generate token"}`, http.StatusInternalServerError)
+	}
+	response := make(map[string]string)
+	response["token"] = tokenString
+	json.NewEncoder(w).Encode(response)
+}
+
+func (p *PsHandler) Logout(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 }

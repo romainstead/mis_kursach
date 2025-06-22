@@ -195,3 +195,14 @@ type SetMetricsResponse struct {
 	NewGuests7Days        int `json:"new_guests_7_days"`
 	RevPac                int `json:"revpac"`
 }
+
+type User struct {
+	ID       int    `json:"user_id"`
+	Username string `json:"username"`
+	Hash     string `json:"hash"`
+}
+
+type UserRequestBody struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}

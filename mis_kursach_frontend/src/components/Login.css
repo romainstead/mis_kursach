@@ -1,0 +1,98 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap');
+
+body {
+    font-family: 'Montserrat', sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #ffffff;
+}
+
+.login-container {
+    background: white;
+    padding: 40px;
+    border-radius: 20px;
+    width: 320px;
+    box-sizing: border-box;
+    text-align: center;
+    margin: 80px auto 0 auto;
+}
+
+.login-container h1 {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.login-container h2 {
+    font-size: 20px;
+    font-weight: 500;
+    margin-bottom: 32px;
+    color: #555;
+}
+
+.login-form input {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 14px;
+    color: #000; /* Чёрный текст */
+    width: 100%;
+    padding: 12px;
+    margin: 12px 0;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    background-color: #F0F0F0;
+    box-sizing: border-box;
+    outline: none;
+    transition: border-color 0.2s ease;
+}
+
+.login-form input:focus {
+    border-color: #FBBA00;
+    outline: none;
+}
+
+.login-form button {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 16px;
+    font-weight: normal;
+    width: 100%;
+    padding: 12px;
+    background-color: #FBBA00;
+    color: black;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.login-form button:hover {
+    background-color: #e0a800;
+}
+
+.forgot-password {
+    text-align: center;
+    font-size: 13px;
+    color: #A1A1A1;
+    margin-top: 8px;
+    margin-bottom: 20px;
+    cursor: pointer;
+    font-family: 'Montserrat', sans-serif;
+}
+
+.forgot-password:hover {
+    text-decoration: underline;
+}
+
+.message {
+    text-align: center;
+    margin-top: 10px;
+    font-size: 14px;
+    font-family: 'Montserrat', sans-serif;
+}
+
+.message.success {
+    color: green;
+}
+
+.message.error {
+    color: red;
+}

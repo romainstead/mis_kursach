@@ -7,7 +7,8 @@ import (
 )
 
 type Config struct {
-	DBConfig DBConfig
+	DBConfig  DBConfig
+	JWTConfig JWTConfig
 }
 
 func NewConfig() *Config {
@@ -18,6 +19,9 @@ func NewConfig() *Config {
 			Host:     os.Getenv("DB_HOST"),
 			Port:     os.Getenv("DB_PORT"),
 			Name:     os.Getenv("DB_NAME"),
+		},
+		JWTConfig: JWTConfig{
+			Secret: os.Getenv("JWT_SECRET"),
 		},
 	}
 }

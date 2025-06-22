@@ -2,11 +2,14 @@ package db
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/georgysavva/scany/v2/pgxscan"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"log"
 	"mis_kursach_backend/internal/models"
+	"mis_kursach_backend/internal/services"
 	"time"
 )
 
@@ -362,8 +365,7 @@ func SetMetrics(dbpool *pgxpool.Pool) (models.SetMetricsResponse, error) {
 			FROM
 				PAYMENTS
 			WHERE
-				PAY_DATE < (NOW() + INTERVAL '7 DAYS')
-				AND PAY_DATE > (NOW() - INTERVAL '7 DAYS')`).Scan(&metrics.Revenue7Days)
+				PAY_DATE BETWEEN NOW() - INTERVAL '7 DAYS' AND NOW()`).Scan(&metrics.Revenue7Days)
 	if err != nil {
 		return metrics, fmt.Errorf("error setting metrics: %v", err)
 	}
@@ -414,4 +416,32 @@ func SetMetrics(dbpool *pgxpool.Pool) (models.SetMetricsResponse, error) {
 		return metrics, fmt.Errorf("error setting metrics: %v", err)
 	}
 	return metrics, nil
+}
+
+func CreateUser(dbpool *pgxpool.Pool, user models.UserRequestBody) (int, error) {
+	var UserID int
+	hashPassword, err := services.GetHashPassword(user.Password)
+	if err != nil {
+		return 0, fmt.Errorf("error getting hash password: %v", err)
+	}
+	err = pgxscan.Get(context.Background(), dbpool, &UserID,
+		`INSERT INTO USERS (username, hash) VALUES ($1, $2) RETURNING ID`, user.Username, hashPassword)
+	if err != nil {
+		return 0, fmt.Errorf("error creating user in db: %v", err)
+	}
+	return UserID, nil
+}
+
+func GetUser(dbpool *pgxpool.Pool, user *models.UserRequestBody) (*models.User, error) {
+	query := `SELECT * FROM USERS WHERE USERNAME = $1`
+	var u models.User
+	err := pgxscan.Get(context.Background(), dbpool, &u,
+		query, user.Username)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("user not found in db")
+		}
+		return nil, fmt.Errorf("error getting user: %v", err)
+	}
+	return &u, nil
 }
