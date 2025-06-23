@@ -13,6 +13,15 @@ import (
 	"time"
 )
 
+func getKeyByValue(m map[int]string, targetValue string) (int, bool) {
+	for key, value := range m {
+		if value == targetValue {
+			return key, true // Found the key
+		}
+	}
+	return 0, false
+}
+
 func GetAllBookings(dbpool *pgxpool.Pool) ([]*models.BookingResponse, error) {
 	var bookings []*models.BookingResponse
 	err := pgxscan.Select(context.Background(), dbpool, &bookings,
@@ -164,6 +173,65 @@ func CreateBooking(dbpool *pgxpool.Pool, b models.CreateBookingInput) error {
 	return err
 }
 
+func DeleteBooking(dbpool *pgxpool.Pool, bookingID int) error {
+	tx, err := dbpool.Begin(context.Background())
+	if err != nil {
+		log.Printf("Error beginning transaction: %v", err)
+		return fmt.Errorf("error beginning transaction: %v", err)
+	}
+
+	_, err = tx.Exec(context.Background(), `DELETE FROM PAYMENTS WHERE BOOKING_ID = $1`, bookingID)
+	if err != nil {
+		log.Printf("Error deleting payment, rolling back: %v", err)
+		err := tx.Rollback(context.Background())
+		if err != nil {
+			log.Printf("Error rolling back transaction: %v", err)
+			return fmt.Errorf("error rolling back transaction: %v", err)
+		}
+		log.Printf("error deleting payment while deleting booking: %v", err)
+		return fmt.Errorf("error deleting payment while deleting booking: %v", err)
+	}
+
+	_, err = tx.Exec(context.Background(), `DELETE FROM GUESTS_IN_BOOKINGS WHERE BOOKING_ID = $1`, bookingID)
+	if err != nil {
+		log.Printf("Error deleting guest in booking, rolling back: %v", err)
+		err := tx.Rollback(context.Background())
+		if err != nil {
+			return fmt.Errorf("error rolling back transaction: %v", err)
+		}
+		log.Printf("Error deleting guest in booking while deleting booking: %v", err)
+		return fmt.Errorf("error deleting guest in booking while deleting booking: %v", err)
+	}
+	_, err = tx.Exec(context.Background(), `DELETE FROM COMPLAINTS WHERE BOOKING_ID = $1`, bookingID)
+	if err != nil {
+		log.Printf("Error deleting complaint, rolling back: %v", err)
+		err := tx.Rollback(context.Background())
+		if err != nil {
+			log.Printf("Error rolling back transaction: %v", err)
+			return fmt.Errorf("error rolling back transaction: %v", err)
+		}
+		log.Printf("Error deleting complaint while deleting booking: %v", err)
+		return fmt.Errorf("error deleting complaint while deleting booking: %v", err)
+	}
+	_, err = tx.Exec(context.Background(), `DELETE FROM BOOKINGS WHERE ID = $1`, bookingID)
+	if err != nil {
+		log.Printf("Error deleting booking, rolling back: %v", err)
+		err := tx.Rollback(context.Background())
+		if err != nil {
+			log.Printf("Error rolling back transaction: %v", err)
+			return fmt.Errorf("error rolling back transaction: %v", err)
+		}
+		log.Printf("Error deleting booking while deleting booking: %v", err)
+		return fmt.Errorf("error deleting booking while deleting booking: %v", err)
+	}
+	err = tx.Commit(context.Background())
+	if err != nil {
+		log.Printf("Error committing transaction: %v", err)
+		return fmt.Errorf("error commiting transaction while deleting booking: %v", err)
+	}
+	return nil
+}
+
 func GetAllComplaints(dbpool *pgxpool.Pool) ([]models.ComplaintResponse, error) {
 	var complaints []models.ComplaintResponse
 	err := pgxscan.Select(context.Background(), dbpool, &complaints,
@@ -218,6 +286,42 @@ func CreateComplaint(dbpool *pgxpool.Pool, complaint models.CreateComplaintInput
 	return nil
 }
 
+func DeleteComplaint(dbpool *pgxpool.Pool, complaintID int) error {
+	_, err := dbpool.Exec(context.Background(), `DELETE FROM COMPLAINTS WHERE ID = $1`, complaintID)
+	if err != nil {
+		return fmt.Errorf("error deleting complaint: %v", err)
+	}
+	return nil
+}
+
+func UpdateComplaint(dbpool *pgxpool.Pool, c models.UpdateComplaintRequest) error {
+	var statusCode int
+	err := dbpool.QueryRow(context.Background(), `SELECT status_code FROM COMPLAINT_STATUSES WHERE name = $1`, c.Status).Scan(&statusCode)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return fmt.Errorf("статус %s не найден", c.Status)
+		}
+		return fmt.Errorf("ошибка при поиске status_code: %v", err)
+	}
+
+	query := `
+		UPDATE COMPLAINTS 
+		SET reason = $1, commentary = $2, issue_date = $3, status_code = $4
+		WHERE id = $5`
+	result, err := dbpool.Exec(context.Background(), query, c.Reason, c.Commentary, c.IssueDate, statusCode, c.ID)
+	if err != nil {
+		log.Printf("Error updating complaint: %v", err)
+		return fmt.Errorf("error updating complaint: %v", err)
+	}
+
+	if result.RowsAffected() == 0 {
+		return fmt.Errorf("complaint with ID %d not found", c.ID)
+	}
+
+	return nil
+
+}
+
 func GetAllPayments(dbpool *pgxpool.Pool) ([]models.PaymentResponse, error) {
 	var payments []models.PaymentResponse
 	err := pgxscan.Select(context.Background(), dbpool, &payments,
@@ -253,6 +357,14 @@ func CreatePayment(dbpool *pgxpool.Pool, b models.CreateBookingInput, amount flo
 	if err != nil {
 		log.Printf("error inserting payment: %v", err)
 		return fmt.Errorf("error inserting payment: %v", err)
+	}
+	return nil
+}
+
+func DeletePayment(dbpool *pgxpool.Pool, paymentID int) error {
+	_, err := dbpool.Exec(context.Background(), `DELETE FROM Payments WHERE id = $1`, paymentID)
+	if err != nil {
+		return fmt.Errorf("error deleting payment: %v", err)
 	}
 	return nil
 }
@@ -444,4 +556,40 @@ func GetUser(dbpool *pgxpool.Pool, user *models.UserRequestBody) (*models.User, 
 		return nil, fmt.Errorf("error getting user: %v", err)
 	}
 	return &u, nil
+}
+
+func DeleteUser(dbpool *pgxpool.Pool, usernameToDelete string) error {
+	_, err := dbpool.Exec(context.Background(), `DELETE FROM USERS WHERE USERNAME = $1`, usernameToDelete)
+	if err != nil {
+		return fmt.Errorf("error deleting user: %v", err)
+	}
+	return nil
+}
+
+func CreateGuest(dbpool *pgxpool.Pool, guest models.Guest) error {
+	_, err := dbpool.Exec(context.Background(),
+		`INSERT INTO GUESTS (name, phone_number, passport_no) VALUES ($1, $2, $3)`,
+		guest.Name, guest.PhoneNumber, guest.PassportNo)
+	if err != nil {
+		return fmt.Errorf("error inserting guest: %v", err)
+	}
+	return nil
+}
+
+func GetAllGuests(dbpool *pgxpool.Pool) ([]models.Guest, error) {
+	var guests []models.Guest
+	err := pgxscan.Select(context.Background(), dbpool, &guests, "SELECT * FROM GUESTS ORDER BY id")
+	if err != nil {
+		log.Printf("error getting all guests: %v", err)
+		return nil, fmt.Errorf("error getting all guests: %v", err)
+	}
+	return guests, nil
+}
+
+func DeleteGuest(dbpool *pgxpool.Pool, id int) error {
+	_, err := dbpool.Exec(context.Background(), `DELETE FROM GUESTS WHERE ID = $1`, id)
+	if err != nil {
+		return fmt.Errorf("error deleting guest: %v", err)
+	}
+	return nil
 }

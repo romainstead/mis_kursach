@@ -83,6 +83,16 @@ type ComplaintResponse struct {
 	Room       int       `json:"room"`
 }
 
+type UpdateComplaintRequest struct {
+	ID         int     `json:"id"`
+	Reason     string  `json:"reason"`
+	Commentary *string `json:"commentary"`
+	IssueDate  string  `json:"issue_date"`
+	BookingID  *int    `json:"booking_id"`
+	Status     string  `json:"status"`
+	Room       int     `json:"room"`
+}
+
 // ComplaintStatus represents the complaints_statuses table
 type ComplaintStatus struct {
 	StatusCode int    `json:"status_code"`

@@ -30,20 +30,22 @@ func PsRoutes(dbpool *pgxpool.Pool, config configs.Config) chi.Router {
 		r.Get("/GetAllComplaints", handler.GetAllComplaints)
 		r.Get("/GetAllPayments", handler.GetAllPayments)
 		r.Get("/GetAllRooms", handler.GetAllRooms)
-
 		r.Get("/GetBookingByID/{id}", handler.GetBookingByID)
 		r.Get("/GetComplaintByID/{id}", handler.GetComplaintByID)
 		r.Get("/GetPaymentByID/{id}", handler.GetPaymentByID)
-
 		r.Post("/CreateBooking", handler.CreateBooking)
-		r.Post("/CreateComplaint", handler.CreateComplaint)
-
 		r.Get("/SetMetrics", handler.SetMetrics)
-
+		r.Delete("/DeleteBooking/{id}", handler.DeleteBooking)
+		r.Delete("/DeleteComplaint/{id}", handler.DeleteComplaint)
+		r.Delete("/DeletePayment/{id}", handler.DeletePayment)
+		r.Delete("/DeleteUser", handler.DeleteUser)
+		r.Post("/CreateUser", handler.CreateUser)
+		// TODO: UPDATE-функции
 	})
 
 	r.Group(func(r chi.Router) {
-		r.Post("/CreateUser", handler.CreateUser)
+		r.Post("/CreateComplaint", handler.CreateComplaint)
+		r.Put("/UpdateComplaint", handler.UpdateComplaint)
 		r.Post("/login", handler.Login)
 		r.Post("/logout", handler.Logout)
 	})
@@ -124,6 +126,23 @@ func (p *PsHandler) CreateBooking(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"message": "Booking created successfully"})
 }
 
+func (p *PsHandler) DeleteBooking(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	id, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, `{"error": "invalid id"}`, http.StatusBadRequest)
+	}
+	err = DeleteBooking(p.dbpool, id)
+	if err != nil {
+		http.Error(w, `{"error": "failed to delete booking"}`, http.StatusNotFound)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	response := make(map[string]string)
+	response["message"] = "success"
+	json.NewEncoder(w).Encode(response)
+}
+
 func (p *PsHandler) GetAllComplaints(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	complaints, err := GetAllComplaints(p.dbpool)
@@ -180,6 +199,55 @@ func (p *PsHandler) CreateComplaint(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"message": "Complaint created successfully"})
 }
 
+func (p *PsHandler) DeleteComplaint(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	id, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, `{"error": "invalid id"}`, http.StatusBadRequest)
+	}
+	err = DeleteComplaint(p.dbpool, id)
+	if err != nil {
+		http.Error(w, `{"error": "complaint not found"}`, http.StatusNotFound)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	response := make(map[string]string)
+	response["message"] = "success"
+	json.NewEncoder(w).Encode(response)
+}
+
+func (p *PsHandler) UpdateComplaint(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	var c models.UpdateComplaintRequest
+	if err := json.NewDecoder(r.Body).Decode(&c); err != nil {
+		http.Error(w, `{"error": "invalid request body"}`, http.StatusBadRequest)
+		log.Printf("Error decoding complaint: %v", err)
+		return
+	}
+	defer r.Body.Close()
+
+	if c.Reason == "" {
+		http.Error(w, `{"error": "reason cannot be empty"}`, http.StatusBadRequest)
+		return
+	}
+	if c.Status == "" {
+		http.Error(w, `{"error": "status is required"}`, http.StatusBadRequest)
+		return
+	}
+
+	err := UpdateComplaint(p.dbpool, c)
+	if err != nil {
+		http.Error(w, `{"error": "failed to update complaint"}`, http.StatusBadRequest)
+		log.Printf("Error updating complaint: %v", err)
+		return
+	}
+
+	w.WriteHeader(200)
+	response := make(map[string]string)
+	response["message"] = "success"
+	json.NewEncoder(w).Encode(response)
+}
+
 func (p *PsHandler) GetAllPayments(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	payments, err := GetAllPayments(p.dbpool)
@@ -218,6 +286,23 @@ func (p *PsHandler) GetPaymentByID(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (p *PsHandler) DeletePayment(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	id, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, `{"error": "invalid id"}`, http.StatusBadRequest)
+	}
+	err = DeletePayment(p.dbpool, id)
+	if err != nil {
+		http.Error(w, `{"error": "payment not found"}`, http.StatusNotFound)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	response := make(map[string]string)
+	response["message"] = "success"
+	json.NewEncoder(w).Encode(response)
+}
+
 func (p *PsHandler) GetAllRooms(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	rooms, err := GetAllRooms(p.dbpool)
@@ -253,6 +338,20 @@ func (p *PsHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	response := make(map[string]string)
 	response["message"] = "user created successfully"
 	response["user_id"] = strconv.Itoa(UserID)
+	json.NewEncoder(w).Encode(response)
+}
+
+func (p *PsHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	username := r.URL.Query().Get("username")
+	err := DeleteUser(p.dbpool, username)
+	if err != nil {
+		http.Error(w, `{"error": "failed to delete user"}`, http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	response := make(map[string]string)
+	response["message"] = "success"
 	json.NewEncoder(w).Encode(response)
 }
 
@@ -294,4 +393,58 @@ func (p *PsHandler) Login(w http.ResponseWriter, r *http.Request) {
 func (p *PsHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
+}
+
+func (p *PsHandler) CreateGuest(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	var g models.Guest
+	if err := json.NewDecoder(r.Body).Decode(&g); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"error": "invalid request body"}`))
+		log.Printf("Error decoding request body: %v", err)
+		return
+	}
+	err := CreateGuest(p.dbpool, g)
+	if err != nil {
+		http.Error(w, `{"error": "failed to create guest"}`, http.StatusInternalServerError)
+		log.Printf("Error creating guest: %v", err)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	response := make(map[string]string)
+	response["message"] = "success"
+	json.NewEncoder(w).Encode(response)
+}
+
+func (p *PsHandler) GetAllGuests(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	guests, err := GetAllGuests(p.dbpool)
+	if err != nil {
+		http.Error(w, `{"error": "failed to get guests"}`, http.StatusInternalServerError)
+		return
+	}
+	if err := json.NewEncoder(w).Encode(guests); err != nil {
+		http.Error(w, `{"error": "failed to encode response"}`, http.StatusInternalServerError)
+		log.Printf("Error encoding guests: %v", err)
+		return
+	}
+}
+
+func (p *PsHandler) DeleteGuest(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	id, err := strconv.Atoi(r.URL.Query().Get("id"))
+	if err != nil {
+		log.Printf("Invalid id: %v", err)
+		http.Error(w, `{"error": "invalid request body"}`, http.StatusBadRequest)
+		return
+	}
+	err = DeleteGuest(p.dbpool, id)
+	if err != nil {
+		log.Printf("Failed to delete guest: %v", err)
+		http.Error(w, `{"error": "failed to delete guest"}`, http.StatusInternalServerError)
+	}
+	w.WriteHeader(http.StatusOK)
+	response := make(map[string]string)
+	response["message"] = "success"
+	json.NewEncoder(w).Encode(response)
 }
