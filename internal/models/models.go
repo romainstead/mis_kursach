@@ -22,17 +22,17 @@ type Booking struct {
 }
 
 type CreateBookingInput struct {
-	StartDate           time.Time  `json:"start_date"`
-	EndDate             time.Time  `json:"end_date"`
-	CategoryCode        int        `json:"category_code"`
-	CheckIn             *time.Time `json:"check_in"`
-	CheckOut            *time.Time `json:"check_out"`
-	RoomNumber          int        `json:"room_number"`
-	BabyBed             bool       `json:"baby_bed"`
-	GuestName           string     `json:"guest_name"`
-	GuestPassportNumber string     `json:"guest_passport_number"`
-	GuestPhoneNumber    string     `json:"guest_phone_number"`
-	MethodCode          int        `json:"payment_method_code"`
+	StartDate           string  `json:"start_date"`
+	EndDate             string  `json:"end_date"`
+	CategoryCode        int     `json:"category_code"`
+	CheckIn             *string `json:"check_in"`
+	CheckOut            *string `json:"check_out"`
+	RoomNumber          int     `json:"room_number"`
+	BabyBed             bool    `json:"baby_bed"`
+	GuestName           string  `json:"guest_name"`
+	GuestPassportNumber string  `json:"guest_passport_number"`
+	GuestPhoneNumber    string  `json:"guest_phone_number"`
+	MethodCode          int     `json:"payment_method_code"`
 }
 
 type BookingResponse struct {

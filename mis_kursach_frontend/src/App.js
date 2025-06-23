@@ -11,6 +11,7 @@ import Login from './components/Login';
 import Logout from "./components/Logout";
 import PrivateRoute from "./components/PrivateRoute";
 import CreateBookingForm from "./components/CreateBooking";
+import BookingDetails from "./components/BookingDetails";
 
 function Layout() {
     const location = useLocation();
@@ -39,6 +40,7 @@ function Layout() {
                     <Route path="/login" element={<Login />} />
                     <Route path="/logout" element={<Logout />} />
                     <Route path="/create-booking" element={<CreateBookingForm />} />
+                    <Route path="/bookings/:id" element={<BookingDetails />} />
                 </Routes>
             </div>
             {!hideLayout && <Footer />}

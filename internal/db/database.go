@@ -41,10 +41,9 @@ func GetAllBookings(dbpool *pgxpool.Pool) ([]*models.BookingResponse, error) {
 	return bookings, nil
 }
 
-func GetBookingByID(dbpool *pgxpool.Pool, id int) (models.Booking, error) {
-	var booking models.Booking
-	err := dbpool.QueryRow(context.Background(),
-		`SELECT DISTINCT
+func GetBookingByID(dbpool *pgxpool.Pool, id int) (models.BookingResponse, error) {
+	var booking models.BookingResponse
+	err := pgxscan.Get(context.Background(), dbpool, &booking, `SELECT DISTINCT
 				b.id AS "id", 
 				b.start_date, 
 				b.end_date, 
@@ -63,8 +62,7 @@ func GetBookingByID(dbpool *pgxpool.Pool, id int) (models.Booking, error) {
 			LEFT JOIN 
 				discounts d ON d.id = b.discount_id
 			JOIN guests_in_bookings gib on gib.booking_id = b.id
-			WHERE b.id = $1
-`, id).Scan(&booking)
+			WHERE b.id = $1`, id)
 	if err != nil {
 		return booking, fmt.Errorf("error getting booking: %v", err)
 	}
@@ -80,12 +78,23 @@ func CreateBooking(dbpool *pgxpool.Pool, b models.CreateBookingInput) error {
 	var discountID int
 	var guestID int
 	var bookingID int
-	nights := int(b.EndDate.Sub(b.StartDate).Hours() / 24)
+
+	// Парсинг времени
+	startDate, err := time.Parse("2006-01-02", b.StartDate)
+	if err != nil {
+		return fmt.Errorf("couldn't parse start_date: %v", err)
+	}
+	endDate, err := time.Parse("2006-01-02", b.EndDate)
+	if err != nil {
+		return fmt.Errorf("couldn't parse end_date: %v", err)
+	}
+
+	// Подсчёт ночей
+	nights := int(endDate.Sub(startDate).Hours() / 24)
 	if nights <= 0 {
 		return fmt.Errorf("nights is zero or lower than zero")
 	}
-
-	err := pgxscan.Select(context.Background(), dbpool, &tariffs, `SELECT * FROM TARIFFS`)
+	err = pgxscan.Select(context.Background(), dbpool, &tariffs, `SELECT * FROM TARIFFS`)
 	if err != nil {
 		return fmt.Errorf("error fetching tariffs from db: %v", err)
 	}
@@ -109,26 +118,14 @@ func CreateBooking(dbpool *pgxpool.Pool, b models.CreateBookingInput) error {
 	if err != nil {
 		return fmt.Errorf("error fetching guest: %v", err)
 	}
-	for _, discount := range discounts {
-		if discount.MinNights == (1) {
-			if nights < 3 {
-				discountID = discount.ID
-				discountAmount = discount.Amount
-				break
-			}
-		} else if discount.MinNights == (2) {
-			if nights < 7 {
-				discountID = discount.ID
-				discountAmount = discount.Amount
-				break
-			}
-		} else if discount.MinNights == (3) {
-			if nights < 14 {
-				discountID = discount.ID
-				discountAmount = discount.Amount
-				break
-			}
-		}
+	if nights >= 3 && nights < 7 {
+		discountID = 1
+	} else if nights >= 7 && nights < 14 {
+		discountID = 2
+	} else if nights >= 14 {
+		discountID = 3
+	} else {
+		discountID = 4
 	}
 	var basePrice float64
 	for _, tariff := range tariffs {
@@ -142,7 +139,6 @@ func CreateBooking(dbpool *pgxpool.Pool, b models.CreateBookingInput) error {
 	}
 	bookingSum := basePrice * float64(nights)
 	totalSum := bookingSum * ((100 - discountAmount) / 100)
-
 	err = pgxscan.Get(context.Background(), dbpool, &bookingID, `
 					INSERT INTO BOOKINGS(
 					status_code,
@@ -289,7 +285,7 @@ func UpdateComplaint(dbpool *pgxpool.Pool, c models.UpdateComplaintRequest) erro
 	var statusCode int
 	err := dbpool.QueryRow(context.Background(), `SELECT status_code FROM COMPLAINT_STATUSES WHERE name = $1`, c.Status).Scan(&statusCode)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return fmt.Errorf("статус %s не найден", c.Status)
 		}
 		return fmt.Errorf("ошибка при поиске status_code: %v", err)
@@ -410,12 +406,12 @@ func SetMetrics(dbpool *pgxpool.Pool) (models.SetMetricsResponse, error) {
 	}
 	err = dbpool.QueryRow(context.Background(),
 		`SELECT
-		COUNT(*) AS UNPAID_BOOKINGS
-		FROM
-			BOOKINGS B
-			LEFT JOIN PAYMENTS P ON B.ID = P.BOOKING_ID
-		WHERE
-			BOOKING_ID IS NULL`).Scan(&metrics.UnpaidBookings)
+				COUNT(*) AS UNPAID_BOOKINGS
+			FROM
+				PAYMENTS P
+			JOIN PAYMENT_STATUSES PS ON P.STATUS_CODE = PS.STATUS_CODE
+			WHERE
+				P.STATUS_CODE = 1`).Scan(&metrics.UnpaidBookings)
 	if err != nil {
 		return metrics, fmt.Errorf("error setting metrics: %v", err)
 	}
@@ -605,7 +601,7 @@ func GetPaymentMethods(dbpool *pgxpool.Pool) ([]models.PaymentMethod, error) {
 	return paymentMethods, nil
 }
 
-func GetFreeRooms(dbpool *pgxpool.Pool, start string, end string) ([]int, error) {
+func GetFreeRooms(dbpool *pgxpool.Pool, start string, end string, categoryCode int) ([]int, error) {
 	var freeRooms []int
 	err := pgxscan.Select(context.Background(), dbpool, &freeRooms,
 		`SELECT r.number
@@ -616,13 +612,28 @@ func GetFreeRooms(dbpool *pgxpool.Pool, start string, end string) ([]int, error)
 			FROM BOOKINGS b
 			JOIN GUESTS_IN_BOOKINGS g ON g.booking_id = b.id
 			WHERE NOT ($2 <= b.start_date OR $1 >= b.end_date)
-		) AND STATE_CODE = 1`, start, end)
+		) AND STATE_CODE = 1 AND R.CATEGORY_CODE = $3`, start, end, categoryCode)
 	if err != nil {
 		log.Printf("error getting free rooms: %v", err)
 		return nil, fmt.Errorf("error getting free rooms: %v", err)
 	}
-	if len(freeRooms) == 0 {
-		return nil, fmt.Errorf("no free rooms found")
-	}
 	return freeRooms, nil
+}
+
+func ConfirmBooking(dbpool *pgxpool.Pool, id int) error {
+	_, err := dbpool.Exec(context.Background(), `UPDATE BOOKINGS SET STATUS_CODE = 1 WHERE ID = $1`, id)
+	if err != nil {
+		log.Printf("error updating booking: %v", err)
+		return fmt.Errorf("error updating booking: %v", err)
+	}
+	_, err = dbpool.Exec(context.Background(), `UPDATE ROOMS R
+        SET STATE_CODE = 2
+        FROM GUESTS_IN_BOOKINGS GIB
+        JOIN BOOKINGS B ON GIB.BOOKING_ID = B.ID
+        WHERE GIB.ROOM = R.NUMBER AND B.ID = $1`, id)
+	if err != nil {
+		log.Printf("error updating room: %v", err)
+		return fmt.Errorf("error updating room: %v", err)
+	}
+	return nil
 }

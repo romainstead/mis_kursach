@@ -26,11 +26,16 @@ func PsRoutes(dbpool *pgxpool.Pool, config configs.Config) chi.Router {
 	r.Group(func(r chi.Router) {
 		r.Use(jwtauth.Verifier(tokenAuth))
 		r.Use(jwtauth.Authenticator(tokenAuth))
+	})
 
+	r.Group(func(r chi.Router) {
+		r.Post("/login", handler.Login)
+		r.Post("/logout", handler.Logout)
 		r.Get("/GetAllBookings", handler.GetAllBookings)
 		r.Get("/GetBookingByID/{id}", handler.GetBookingByID)
 		r.Post("/CreateBooking", handler.CreateBooking)
 		r.Delete("/DeleteBooking/{id}", handler.DeleteBooking)
+		r.Post("/ConfirmBooking", handler.ConfirmBooking)
 		// TODO: UPDATE BOOKING
 
 		r.Get("/GetAllComplaints", handler.GetAllComplaints)
@@ -53,11 +58,6 @@ func PsRoutes(dbpool *pgxpool.Pool, config configs.Config) chi.Router {
 		r.Get("/GetRoomCategories", handler.GetRoomCategories)
 		r.Get("/GetPaymentMethods", handler.GetPaymentMethods)
 		r.Get("/GetFreeRooms", handler.GetFreeRooms)
-	})
-
-	r.Group(func(r chi.Router) {
-		r.Post("/login", handler.Login)
-		r.Post("/logout", handler.Logout)
 	})
 
 	return r
@@ -162,7 +162,9 @@ func (p *PsHandler) GetAllComplaints(w http.ResponseWriter, _ *http.Request) {
 		return
 	}
 	if len(complaints) == 0 {
-		http.Error(w, `{"error": "no complaints found"}`, http.StatusNotFound)
+		// Возвращаем пустой массив вместо ошибки
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode([]models.Complaint{})
 		return
 	}
 	if err := json.NewEncoder(w).Encode(complaints); err != nil {
@@ -193,6 +195,7 @@ func (p *PsHandler) GetComplaintByID(w http.ResponseWriter, r *http.Request) {
 
 func (p *PsHandler) CreateComplaint(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+
 	var c models.CreateComplaintInput
 	if err := json.NewDecoder(r.Body).Decode(&c); err != nil {
 		http.Error(w, `{"error": "invalid request body"}`, http.StatusBadRequest)
@@ -491,7 +494,17 @@ func (p *PsHandler) GetFreeRooms(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	start := r.URL.Query().Get("start_date")
 	end := r.URL.Query().Get("end_date")
-	freeRooms, err := GetFreeRooms(p.dbpool, start, end)
+	categoryCode, err := strconv.Atoi(r.URL.Query().Get("category_code"))
+	if err != nil {
+		http.Error(w, `{"error": "invalid category code"}`, http.StatusBadRequest)
+	}
+	freeRooms, err := GetFreeRooms(p.dbpool, start, end, categoryCode)
+	if len(freeRooms) == 0 {
+		// Возвращаем пустой массив вместо ошибки
+		w.WriteHeader(http.StatusNoContent)
+		_ = json.NewEncoder(w).Encode([]models.Room{})
+		return
+	}
 	if err != nil {
 		http.Error(w, `{"error": "failed to get free rooms"}`, http.StatusInternalServerError)
 		log.Printf("Error getting free rooms: %v", err)
@@ -501,4 +514,23 @@ func (p *PsHandler) GetFreeRooms(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"error": "failed to encode response"}`, http.StatusInternalServerError)
 		log.Printf("Error encoding free rooms: %v", err)
 	}
+}
+
+func (p *PsHandler) ConfirmBooking(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.Atoi(r.URL.Query().Get("id"))
+	if err != nil {
+		http.Error(w, `{"error": "invalid request body"}`, http.StatusBadRequest)
+		log.Printf("Error decoding request body: %v", err)
+		return
+	}
+	err = ConfirmBooking(p.dbpool, id)
+	if err != nil {
+		http.Error(w, `{"error": "failed to confirm booking"}`, http.StatusInternalServerError)
+		log.Printf("Error confirming booking: %v", err)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	response := make(map[string]string)
+	response["message"] = "success"
+	json.NewEncoder(w).Encode(response)
 }
