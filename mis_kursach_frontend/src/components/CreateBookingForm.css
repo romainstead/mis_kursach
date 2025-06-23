@@ -1,0 +1,77 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap');
+
+.form-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    font-family: 'Montserrat', sans-serif;
+}
+
+.form-container input[type="text"],
+.form-container input[type="date"],
+.form-container input[type="datetime-local"],
+.form-container input[type="number"],
+.form-container input[type="tel"],
+.form-container input[type="email"] {
+    padding: 5px 12px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 12px;
+    font-family: inherit;
+    transition: border-color 0.2s ease;
+}
+
+.form-container input:focus {
+    border-color: #FBBA00;
+    outline: none;
+}
+
+.form-container .checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.form-container button {
+    background-color: #FBBA00;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 12px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    font-family: inherit;
+}
+
+.form-container button:hover {
+    background-color: #FBBA00;
+}
+
+.form-container p {
+    margin-top: 8px;
+    color: green;
+    font-size: 14px;
+}
+
+.form-container select {
+    padding: 5px 12px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 12px;
+    font-family: 'Montserrat', sans-serif;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    background-color: white;
+    appearance: none; /* скрывает стрелку по умолчанию (для кроссбраузерности можешь доработать отдельно) */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+}
+
+.form-container select:focus {
+    border-color: #FBBA00;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(251, 186, 0, 0.2);
+}

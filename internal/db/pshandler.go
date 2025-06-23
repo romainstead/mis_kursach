@@ -26,26 +26,36 @@ func PsRoutes(dbpool *pgxpool.Pool, config configs.Config) chi.Router {
 	r.Group(func(r chi.Router) {
 		r.Use(jwtauth.Verifier(tokenAuth))
 		r.Use(jwtauth.Authenticator(tokenAuth))
+
 		r.Get("/GetAllBookings", handler.GetAllBookings)
-		r.Get("/GetAllComplaints", handler.GetAllComplaints)
-		r.Get("/GetAllPayments", handler.GetAllPayments)
-		r.Get("/GetAllRooms", handler.GetAllRooms)
 		r.Get("/GetBookingByID/{id}", handler.GetBookingByID)
-		r.Get("/GetComplaintByID/{id}", handler.GetComplaintByID)
-		r.Get("/GetPaymentByID/{id}", handler.GetPaymentByID)
 		r.Post("/CreateBooking", handler.CreateBooking)
-		r.Get("/SetMetrics", handler.SetMetrics)
 		r.Delete("/DeleteBooking/{id}", handler.DeleteBooking)
+		// TODO: UPDATE BOOKING
+
+		r.Get("/GetAllComplaints", handler.GetAllComplaints)
 		r.Delete("/DeleteComplaint/{id}", handler.DeleteComplaint)
+		r.Get("/GetComplaintByID/{id}", handler.GetComplaintByID)
+		r.Post("/CreateComplaint", handler.CreateComplaint)
+		r.Put("/UpdateComplaint", handler.UpdateComplaint)
+
+		r.Get("/GetAllPayments", handler.GetAllPayments)
+		r.Get("/GetPaymentByID/{id}", handler.GetPaymentByID)
 		r.Delete("/DeletePayment/{id}", handler.DeletePayment)
-		r.Delete("/DeleteUser", handler.DeleteUser)
+		// TODO: UPDATE PAYMENT
+
 		r.Post("/CreateUser", handler.CreateUser)
-		// TODO: UPDATE-функции
+		r.Delete("/DeleteUser", handler.DeleteUser)
+		// TODO: UPDATE USER
+
+		r.Get("/SetMetrics", handler.SetMetrics)
+		r.Get("/GetAllRooms", handler.GetAllRooms)
+		r.Get("/GetRoomCategories", handler.GetRoomCategories)
+		r.Get("/GetPaymentMethods", handler.GetPaymentMethods)
+		r.Get("/GetFreeRooms", handler.GetFreeRooms)
 	})
 
 	r.Group(func(r chi.Router) {
-		r.Post("/CreateComplaint", handler.CreateComplaint)
-		r.Put("/UpdateComplaint", handler.UpdateComplaint)
 		r.Post("/login", handler.Login)
 		r.Post("/logout", handler.Logout)
 	})
@@ -53,7 +63,7 @@ func PsRoutes(dbpool *pgxpool.Pool, config configs.Config) chi.Router {
 	return r
 }
 
-func (p *PsHandler) SetMetrics(w http.ResponseWriter, r *http.Request) {
+func (p *PsHandler) SetMetrics(w http.ResponseWriter, _ *http.Request) {
 	time.Sleep(1 * time.Second)
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	metrics, err := SetMetrics(p.dbpool)
@@ -68,7 +78,7 @@ func (p *PsHandler) SetMetrics(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (p *PsHandler) GetAllBookings(w http.ResponseWriter, r *http.Request) {
+func (p *PsHandler) GetAllBookings(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	bookings, err := GetAllBookings(p.dbpool)
 	if err != nil {
@@ -143,7 +153,7 @@ func (p *PsHandler) DeleteBooking(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-func (p *PsHandler) GetAllComplaints(w http.ResponseWriter, r *http.Request) {
+func (p *PsHandler) GetAllComplaints(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	complaints, err := GetAllComplaints(p.dbpool)
 	if err != nil {
@@ -248,7 +258,7 @@ func (p *PsHandler) UpdateComplaint(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-func (p *PsHandler) GetAllPayments(w http.ResponseWriter, r *http.Request) {
+func (p *PsHandler) GetAllPayments(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	payments, err := GetAllPayments(p.dbpool)
 	if err != nil {
@@ -303,7 +313,7 @@ func (p *PsHandler) DeletePayment(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-func (p *PsHandler) GetAllRooms(w http.ResponseWriter, r *http.Request) {
+func (p *PsHandler) GetAllRooms(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	rooms, err := GetAllRooms(p.dbpool)
 	if err != nil {
@@ -390,7 +400,7 @@ func (p *PsHandler) Login(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-func (p *PsHandler) Logout(w http.ResponseWriter, r *http.Request) {
+func (p *PsHandler) Logout(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 }
@@ -416,7 +426,7 @@ func (p *PsHandler) CreateGuest(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-func (p *PsHandler) GetAllGuests(w http.ResponseWriter, r *http.Request) {
+func (p *PsHandler) GetAllGuests(w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "application/json")
 	guests, err := GetAllGuests(p.dbpool)
 	if err != nil {
@@ -447,4 +457,48 @@ func (p *PsHandler) DeleteGuest(w http.ResponseWriter, r *http.Request) {
 	response := make(map[string]string)
 	response["message"] = "success"
 	json.NewEncoder(w).Encode(response)
+}
+
+func (p *PsHandler) GetRoomCategories(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	categories, err := GetRoomCategories(p.dbpool)
+	if err != nil {
+		http.Error(w, `{"error": "failed to get categories"}`, http.StatusInternalServerError)
+		log.Printf("Error getting categories: %v", err)
+		return
+	}
+	if err := json.NewEncoder(w).Encode(categories); err != nil {
+		http.Error(w, `{"error": "failed to encode response"}`, http.StatusInternalServerError)
+		log.Printf("Error encoding categories: %v", err)
+	}
+}
+
+func (p *PsHandler) GetPaymentMethods(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	paymentMethods, err := GetPaymentMethods(p.dbpool)
+	if err != nil {
+		http.Error(w, `{"error": "failed to get payment methods"}`, http.StatusInternalServerError)
+		log.Printf("Error getting payment methods: %v", err)
+		return
+	}
+	if err := json.NewEncoder(w).Encode(paymentMethods); err != nil {
+		http.Error(w, `{"error": "failed to encode response"}`, http.StatusInternalServerError)
+		log.Printf("Error encoding payment methods: %v", err)
+	}
+}
+
+func (p *PsHandler) GetFreeRooms(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	start := r.URL.Query().Get("start_date")
+	end := r.URL.Query().Get("end_date")
+	freeRooms, err := GetFreeRooms(p.dbpool, start, end)
+	if err != nil {
+		http.Error(w, `{"error": "failed to get free rooms"}`, http.StatusInternalServerError)
+		log.Printf("Error getting free rooms: %v", err)
+		return
+	}
+	if err := json.NewEncoder(w).Encode(freeRooms); err != nil {
+		http.Error(w, `{"error": "failed to encode response"}`, http.StatusInternalServerError)
+		log.Printf("Error encoding free rooms: %v", err)
+	}
 }

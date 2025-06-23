@@ -13,15 +13,6 @@ import (
 	"time"
 )
 
-func getKeyByValue(m map[int]string, targetValue string) (int, bool) {
-	for key, value := range m {
-		if value == targetValue {
-			return key, true // Found the key
-		}
-	}
-	return 0, false
-}
-
 func GetAllBookings(dbpool *pgxpool.Pool) ([]*models.BookingResponse, error) {
 	var bookings []*models.BookingResponse
 	err := pgxscan.Select(context.Background(), dbpool, &bookings,
@@ -473,7 +464,7 @@ func SetMetrics(dbpool *pgxpool.Pool) (models.SetMetricsResponse, error) {
 
 	err = dbpool.QueryRow(context.Background(),
 		`SELECT
-				SUM(AMOUNT) AS REVENUE_7DAYS
+				COALESCE(SUM(AMOUNT), 0) AS REVENUE_7DAYS
 			FROM
 				PAYMENTS
 			WHERE
@@ -484,7 +475,7 @@ func SetMetrics(dbpool *pgxpool.Pool) (models.SetMetricsResponse, error) {
 
 	err = dbpool.QueryRow(context.Background(),
 		`SELECT
-	ROUND(
+	COALESCE(ROUND(
 		(
 			SELECT
 				SUM(AMOUNT)
@@ -497,7 +488,7 @@ func SetMetrics(dbpool *pgxpool.Pool) (models.SetMetricsResponse, error) {
 				ROOMS
 		),
 		2
-	) AS REVPAR`).Scan(&metrics.RevPar)
+	), 0) AS REVPAR`).Scan(&metrics.RevPar)
 	if err != nil {
 		return metrics, fmt.Errorf("error setting metrics: %v", err)
 	}
@@ -592,4 +583,46 @@ func DeleteGuest(dbpool *pgxpool.Pool, id int) error {
 		return fmt.Errorf("error deleting guest: %v", err)
 	}
 	return nil
+}
+
+func GetRoomCategories(dbpool *pgxpool.Pool) ([]models.RoomCategory, error) {
+	var categories []models.RoomCategory
+	err := pgxscan.Select(context.Background(), dbpool, &categories, "SELECT * FROM ROOM_CATEGORIES")
+	if err != nil {
+		log.Printf("error getting categories: %v", err)
+		return nil, fmt.Errorf("error getting categories: %v", err)
+	}
+	return categories, nil
+}
+
+func GetPaymentMethods(dbpool *pgxpool.Pool) ([]models.PaymentMethod, error) {
+	var paymentMethods []models.PaymentMethod
+	err := pgxscan.Select(context.Background(), dbpool, &paymentMethods, "SELECT * FROM Payment_Methods")
+	if err != nil {
+		log.Printf("error getting payment methods: %v", err)
+		return nil, fmt.Errorf("error getting payment methods: %v", err)
+	}
+	return paymentMethods, nil
+}
+
+func GetFreeRooms(dbpool *pgxpool.Pool, start string, end string) ([]int, error) {
+	var freeRooms []int
+	err := pgxscan.Select(context.Background(), dbpool, &freeRooms,
+		`SELECT r.number
+		FROM 
+		    ROOMS r
+		WHERE r.number NOT IN (
+			SELECT g.room
+			FROM BOOKINGS b
+			JOIN GUESTS_IN_BOOKINGS g ON g.booking_id = b.id
+			WHERE NOT ($2 <= b.start_date OR $1 >= b.end_date)
+		) AND STATE_CODE = 1`, start, end)
+	if err != nil {
+		log.Printf("error getting free rooms: %v", err)
+		return nil, fmt.Errorf("error getting free rooms: %v", err)
+	}
+	if len(freeRooms) == 0 {
+		return nil, fmt.Errorf("no free rooms found")
+	}
+	return freeRooms, nil
 }
