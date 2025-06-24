@@ -6,6 +6,7 @@ function Login() {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [message, setMessage] = useState('');
+    const [isPopupOpen, setIsPopupOpen] = useState(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -29,6 +30,9 @@ function Login() {
         }
     };
 
+    const handleOpenPopup = () => setIsPopupOpen(true);
+    const handleClosePopup = () => setIsPopupOpen(false);
+
     return (
         <div className="login-container">
             <h1>LOGO</h1>
@@ -46,10 +50,19 @@ function Login() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                 />
-                <div className="forgot-password">Забыли пароль?</div>
+                <div className="forgot-password" onClick={handleOpenPopup}>Забыли пароль?</div>
                 <button type="submit">Войти</button>
                 {message && <div className={`message ${message.includes("успеш") ? "success" : "error"}`}>{message}</div>}
             </form>
+
+            {isPopupOpen && (
+                <div className="modal-overlay" onClick={handleClosePopup}>
+                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                        <button className="modal-close" onClick={handleClosePopup}>×</button>
+                        <p>Для смены пароля обратитесь к администратору системы или обратитесь на почту rao6@tpu.ru.</p>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

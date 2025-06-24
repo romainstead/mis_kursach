@@ -46,7 +46,6 @@ function Bookings() {
         }
     };
 
-
     const handleOpenModal = () => setIsModalOpen(true);
     const handleCloseModal = () => setIsModalOpen(false);
 
@@ -85,7 +84,7 @@ function Bookings() {
                             <td>{c.id}</td>
                             <td>{new Date(c.start_date).toLocaleDateString()}</td>
                             <td>{new Date(c.end_date).toLocaleDateString()}</td>
-                            <td>{c.booking_status}</td>
+                            <td className={c.booking_status === 'Подтверждено' ? 'status-confirmed' : 'status-pending'}>{c.booking_status}</td>
                             <td>{c.room}</td>
                             <td className="dropdown-cell">
                                 <button className="dropdown-toggle" onClick={() => toggleDropdown(c.id)}>

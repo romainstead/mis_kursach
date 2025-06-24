@@ -270,7 +270,7 @@ func GetComplaintByID(dbpool *pgxpool.Pool, id int) (models.ComplaintResponse, e
 func CreateComplaint(dbpool *pgxpool.Pool, complaint models.CreateComplaintInput) error {
 	_, err := dbpool.Exec(context.Background(),
 		`INSERT INTO COMPLAINTS(reason, commentary, issue_date, booking_id, status_code) VALUES ($1, $2, $3, $4, $5)`,
-		complaint.Reason, complaint.Commentary, time.Now(), complaint.BookingID, 1)
+		complaint.Reason, complaint.Commentary, time.Now(), complaint.BookingID, 2)
 	if err != nil {
 		return fmt.Errorf("error inserting complaint: %v", err)
 	}

@@ -123,3 +123,12 @@
     font-size: 24px;
     cursor: pointer;
 }
+
+/* Status colors */
+.status-open {
+    color: red;
+}
+
+.status-resolved {
+    color: green;
+}

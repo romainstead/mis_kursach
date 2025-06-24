@@ -120,3 +120,11 @@
     margin-bottom: 16px;
 }
 
+/* Status colors */
+.status-confirmed {
+    color: green;
+}
+
+.status-pending {
+    color: orange;
+}

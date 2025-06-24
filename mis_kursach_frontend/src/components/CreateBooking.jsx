@@ -9,6 +9,31 @@ function CreateBookingForm({ onClose }) {
     const [methods, setMethods] = useState([]);
     const [freeRooms, setFreeRooms] = useState([]); // Ensure initial state is an array
 
+    // Get today's date in YYYY-MM-DD format
+    const today = new Date().toISOString().split('T')[0];
+    // Get today's date and time in YYYY-MM-DDTHH:mm format
+    const now = new Date().toISOString().slice(0, 16);
+
+    // Calculate minimum end_date (1 day after start_date)
+    const getMinEndDate = () => {
+        if (formData.start_date) {
+            const startDate = new Date(formData.start_date);
+            startDate.setDate(startDate.getDate() + 1);
+            return startDate.toISOString().split('T')[0];
+        }
+        return today;
+    };
+
+    // Calculate minimum check_out (1 day after check_in)
+    const getMinCheckOut = () => {
+        if (formData.check_in) {
+            const checkInDate = new Date(formData.check_in);
+            checkInDate.setDate(checkInDate.getDate() + 1);
+            return checkInDate.toISOString().slice(0, 16);
+        }
+        return now;
+    };
+
     useEffect(() => {
         api.get("/GetRoomCategories").then(res => setCategories(res.data || []));
         api.get("/GetPaymentMethods").then(res => setMethods(res.data || []));
@@ -87,9 +112,9 @@ function CreateBookingForm({ onClose }) {
     return (
         <form onSubmit={handleSubmit} className="form-container">
             <label>Дата начала</label>
-            <input type="date" name="start_date" onChange={handleChange} required />
+            <input type="date" name="start_date" onChange={handleChange} required min={today} />
             <label>Дата конца</label>
-            <input type="date" name="end_date" onChange={handleChange} required />
+            <input type="date" name="end_date" onChange={handleChange} required min={getMinEndDate()} />
             <label>Код категории номера</label>
             <select name="category_code" onChange={handleChange} required>
                 <option value="">Выберите категорию</option>
@@ -103,6 +128,7 @@ function CreateBookingForm({ onClose }) {
                 name="check_in"
                 value={formData.check_in || ''}
                 onChange={handleChange}
+                min={now}
             />
             <label>Дата и время выезда</label>
             <input
@@ -110,6 +136,7 @@ function CreateBookingForm({ onClose }) {
                 name="check_out"
                 value={formData.check_out || ''}
                 onChange={handleChange}
+                min={getMinCheckOut()}
             />
             <label>Номер комнаты</label>
             {formData.start_date && formData.end_date && formData.category_code ? (

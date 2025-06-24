@@ -45,7 +45,7 @@ function Complaints() {
     const handleCloseModal = () => setIsModalOpen(false);
 
     const handleComplaintCreated = () => {
-        fetchComplaints(); // Обновляем список жалоб после создания
+        fetchComplaints();
         handleCloseModal();
     };
 
@@ -78,7 +78,7 @@ function Complaints() {
                         <td>{c.id}</td>
                         <td>{new Date(c.issue_date).toLocaleString()}</td>
                         <td>{c.booking_id}</td>
-                        <td>{c.status}</td>
+                        <td className={c.status === 'Открыта' ? 'status-open' : 'status-resolved'}>{c.status}</td>
                         <td>{c.room}</td>
                         <td className="dropdown-cell">
                             <button className="dropdown-toggle" onClick={() => toggleDropdown(c.id)}>
