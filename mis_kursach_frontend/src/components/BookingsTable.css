@@ -101,11 +101,12 @@
     font-family: "Montserrat", sans-serif;
     background-color: #FBBA00;
     color: black;
-    padding: 8px 16px;
+    padding: 10px 16px;
     border: none;
     border-radius: 8px;
     cursor: pointer;
     font-weight: normal;
+    transform: translate(-50px, 10px)
 }
 
 .add-booking-btn:hover {

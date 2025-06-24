@@ -27,14 +27,16 @@ func GetAllBookings(dbpool *pgxpool.Pool) ([]*models.BookingResponse, error) {
 				b.total_sum, 
 				bs.name AS "booking_status", 
 				d.amount AS "discount_amount",
-				gib.room
+				gib.room,
+				g.name AS "guest_name"
 			FROM 
 				bookings b
 			JOIN 
 				booking_statuses bs ON bs.status_code = b.status_code
 			LEFT JOIN 
 				discounts d ON d.id = b.discount_id
-			JOIN guests_in_bookings gib on gib.booking_id = b.id`)
+			JOIN guests_in_bookings gib on gib.booking_id = b.id
+			JOIN GUESTS G ON G.id = gib.guest_id`)
 	if err != nil {
 		return nil, fmt.Errorf("error getting all bookings: %v", err)
 	}
@@ -54,7 +56,8 @@ func GetBookingByID(dbpool *pgxpool.Pool, id int) (models.BookingResponse, error
 				b.total_sum, 
 				bs.name AS "booking_status", 
 				d.amount AS "discount_amount",
-				gib.room
+				gib.room,
+				g.name as "guest_name"
 			FROM 
 				bookings b
 			JOIN 
@@ -62,6 +65,7 @@ func GetBookingByID(dbpool *pgxpool.Pool, id int) (models.BookingResponse, error
 			LEFT JOIN 
 				discounts d ON d.id = b.discount_id
 			JOIN guests_in_bookings gib on gib.booking_id = b.id
+			JOIN GUESTS G ON GIB.GUEST_ID = G.ID
 			WHERE b.id = $1`, id)
 	if err != nil {
 		return booking, fmt.Errorf("error getting booking: %v", err)
@@ -241,9 +245,9 @@ func GetAllComplaints(dbpool *pgxpool.Pool) ([]models.ComplaintResponse, error) 
 	return complaints, nil
 }
 
-func GetComplaintByID(dbpool *pgxpool.Pool, id int) (models.Complaint, error) {
-	var complaint models.Complaint
-	err := dbpool.QueryRow(context.Background(), `SELECT DISTINCT
+func GetComplaintByID(dbpool *pgxpool.Pool, id int) (models.ComplaintResponse, error) {
+	var complaint models.ComplaintResponse
+	err := pgxscan.Get(context.Background(), dbpool, &complaint, `SELECT DISTINCT
 					C.ID,
 					C.REASON,
 					C.COMMENTARY,
@@ -256,7 +260,7 @@ func GetComplaintByID(dbpool *pgxpool.Pool, id int) (models.Complaint, error) {
 					JOIN COMPLAINT_STATUSES CS ON C.STATUS_CODE = CS.STATUS_CODE
 					JOIN BOOKINGS B ON C.BOOKING_ID = B.ID
 					JOIN GUESTS_IN_BOOKINGS GIB ON B.ID = GIB.BOOKING_ID
-				WHERE c.id=$1`, id).Scan(&complaint)
+				WHERE c.id=$1`, id)
 	if err != nil {
 		return complaint, fmt.Errorf("error getting complaint: %v", err)
 	}
@@ -423,7 +427,7 @@ func SetMetrics(dbpool *pgxpool.Pool) (models.SetMetricsResponse, error) {
 	}
 
 	err = dbpool.QueryRow(context.Background(),
-		`SELECT COUNT(ID) AS OPEN_COMPLAINTS FROM COMPLAINTS WHERE STATUS_CODE = 1`).Scan(&metrics.OpenComplaints)
+		`SELECT COUNT(ID) AS OPEN_COMPLAINTS FROM COMPLAINTS WHERE STATUS_CODE = 1 OR STATUS_CODE = 2`).Scan(&metrics.OpenComplaints)
 	if err != nil {
 		return metrics, fmt.Errorf("error setting metrics: %v", err)
 	}
@@ -634,6 +638,24 @@ func ConfirmBooking(dbpool *pgxpool.Pool, id int) error {
 	if err != nil {
 		log.Printf("error updating room: %v", err)
 		return fmt.Errorf("error updating room: %v", err)
+	}
+	return nil
+}
+
+func ResolveComplaint(dbpool *pgxpool.Pool, id int, statusCode int) error {
+	_, err := dbpool.Exec(context.Background(), `UPDATE COMPLAINTS SET STATUS_CODE = $1 WHERE ID = $2`, statusCode, id)
+	if err != nil {
+		log.Printf("error updating complaint: %v", err)
+		return fmt.Errorf("error updating complaint: %v", err)
+	}
+	return nil
+}
+
+func ConfirmPayment(dbpool *pgxpool.Pool, id int) error {
+	_, err := dbpool.Exec(context.Background(), `UPDATE PAYMENTS SET STATUS_CODE = 2 WHERE ID = $1`, id)
+	if err != nil {
+		log.Printf("error updating payment: %v", err)
+		return fmt.Errorf("error updating payment: %v", err)
 	}
 	return nil
 }

@@ -12,39 +12,49 @@ import Logout from "./components/Logout";
 import PrivateRoute from "./components/PrivateRoute";
 import CreateBookingForm from "./components/CreateBooking";
 import BookingDetails from "./components/BookingDetails";
+import ComplaintDetails from "./components/ComplaintDetails";
+import CreateComplaintForm from "./components/CreateComplaint";
+import {NotificationProvider} from "./components/NotificationContext";
 
 function Layout() {
     const location = useLocation();
     const hideLayout = ["/login", "/logout"].includes(location.pathname);
 
     useEffect(() => {
-        window.scrollTo(0, 0); // если хочешь сбрасывать скролл при смене страниц
+        window.scrollTo(0, 0);
     }, [location.pathname]);
 
     return (
-        <>
-            {!hideLayout && <Navbar />}
-            <div className="App" style={{ minHeight: 'calc(100vh - 100px)' }}>
-                <Routes>
-                    <Route
-                        path="/"
-                        element={
+        <NotificationProvider>
+            <>
+                {!hideLayout && <Navbar />}
+                <div className="App" style={{ minHeight: 'calc(100vh - 100px)' }}>
+                    <Routes>
+                        <Route
+                            path="/"
+                            element={
                                 <Navigate to="/login" />
-                        }
-                    />
-                    <Route path="/main" element={<PrivateRoute><Main /></PrivateRoute>} />
-                    <Route path="/bookings" element={<PrivateRoute><Bookings /></PrivateRoute>} />
-                    <Route path="/complaints" element={<PrivateRoute><Complaints /></PrivateRoute>} />
-                    <Route path="/payments" element={<PrivateRoute><Payments /></PrivateRoute>} />
-                    <Route path="/rooms" element={<PrivateRoute><Rooms /></PrivateRoute>} />
-                    <Route path="/login" element={<Login />} />
-                    <Route path="/logout" element={<Logout />} />
-                    <Route path="/create-booking" element={<CreateBookingForm />} />
-                    <Route path="/bookings/:id" element={<BookingDetails />} />
-                </Routes>
-            </div>
-            {!hideLayout && <Footer />}
-        </>
+                            }
+                        />
+                        <Route path="/main" element={<PrivateRoute><Main /></PrivateRoute>} />
+                        <Route path="/bookings" element={<PrivateRoute><Bookings /></PrivateRoute>} />
+                        <Route path="/complaints" element={<PrivateRoute><Complaints /></PrivateRoute>} />
+                        <Route path="/payments" element={<PrivateRoute><Payments /></PrivateRoute>} />
+                        <Route path="/rooms" element={<PrivateRoute><Rooms /></PrivateRoute>} />
+                        <Route path="/login" element={<Login />} />
+                        <Route path="/logout" element={<Logout />} />
+                        <Route path="/create-booking" element={<CreateBookingForm />} />
+                        <Route path="/bookings/:id" element={<BookingDetails />} />
+                        <Route path="/complaints/:id" element={<ComplaintDetails/>} />
+                        <Route
+                            path="/create-complaint"
+                            element={<CreateComplaintForm onClose={() => {}} />}
+                        />
+                    </Routes>
+                </div>
+                {!hideLayout && <Footer />}
+            </>
+        </NotificationProvider>
     );
 }
 

@@ -36,7 +36,6 @@ func PsRoutes(dbpool *pgxpool.Pool, config configs.Config) chi.Router {
 		r.Post("/CreateBooking", handler.CreateBooking)
 		r.Delete("/DeleteBooking/{id}", handler.DeleteBooking)
 		r.Post("/ConfirmBooking", handler.ConfirmBooking)
-		// TODO: UPDATE BOOKING
 
 		r.Get("/GetAllComplaints", handler.GetAllComplaints)
 		r.Delete("/DeleteComplaint/{id}", handler.DeleteComplaint)
@@ -58,6 +57,8 @@ func PsRoutes(dbpool *pgxpool.Pool, config configs.Config) chi.Router {
 		r.Get("/GetRoomCategories", handler.GetRoomCategories)
 		r.Get("/GetPaymentMethods", handler.GetPaymentMethods)
 		r.Get("/GetFreeRooms", handler.GetFreeRooms)
+		r.Post("/ResolveComplaint", handler.ResolveComplaint)
+		r.Post("/ConfirmPayment", handler.ConfirmPayment)
 	})
 
 	return r
@@ -209,6 +210,7 @@ func (p *PsHandler) CreateComplaint(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Error creating complaint: %v", err)
 		return
 	}
+	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(map[string]string{"message": "Complaint created successfully"})
 }
 
@@ -528,6 +530,49 @@ func (p *PsHandler) ConfirmBooking(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"error": "failed to confirm booking"}`, http.StatusInternalServerError)
 		log.Printf("Error confirming booking: %v", err)
 		return
+	}
+	w.WriteHeader(http.StatusOK)
+	response := make(map[string]string)
+	response["message"] = "success"
+	json.NewEncoder(w).Encode(response)
+}
+
+func (p *PsHandler) ResolveComplaint(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.Atoi(r.URL.Query().Get("id"))
+	if err != nil {
+		http.Error(w, `{"error": "invalid request body"}`, http.StatusBadRequest)
+		log.Printf("Error decoding request body: %v", err)
+		return
+	}
+
+	statusCode, err := strconv.Atoi(r.URL.Query().Get("statusCode"))
+	if err != nil {
+		http.Error(w, `{"error": "invalid request body"}`, http.StatusBadRequest)
+		log.Printf("Error decoding request body: %v", err)
+		return
+	}
+
+	err = ResolveComplaint(p.dbpool, id, statusCode)
+	if err != nil {
+		http.Error(w, `{"error": "failed to resolve complaint"}`, http.StatusInternalServerError)
+		log.Printf("Error resolving complaint: %v", err)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	response := make(map[string]string)
+	response["message"] = "success"
+	json.NewEncoder(w).Encode(response)
+}
+
+func (p *PsHandler) ConfirmPayment(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.Atoi(r.URL.Query().Get("id"))
+	if err != nil {
+		http.Error(w, `{"error": "invalid request body"}`, http.StatusBadRequest)
+	}
+	err = ConfirmPayment(p.dbpool, id)
+	if err != nil {
+		http.Error(w, `{"error": "failed to confirm payment"}`, http.StatusInternalServerError)
+		log.Printf("Error confirming payment: %v", err)
 	}
 	w.WriteHeader(http.StatusOK)
 	response := make(map[string]string)

@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom';
 import React, { useState, useEffect } from 'react';
 import "./PaymentsTable.css"
 import api from "../utils/api";
@@ -11,7 +10,27 @@ function Payments() {
     const toggleDropdown = (id) => {
         setOpenDropdownId(openDropdownId === id ? null : id);
     };
+    const fetchPayments = async () => {
+        try {
+            const response = await api.get('http://127.0.0.1:8080/api/GetAllPayments');
+            setPayments(response.data || []);
+            setLoading(false);
+        } catch (err) {
+            setError('Failed to fetch bookings');
+            setLoading(false);
+        }
+    };
 
+    const handleConfirmPayment= async (paymentId) => {
+        try {
+            await api.post(`/ConfirmPayment?id=${paymentId}`);
+            await fetchPayments();
+            setOpenDropdownId(null);
+        } catch (err) {
+            console.error('Ошибка при подтверждении бронирования:', err);
+            setError('Failed to confirm booking');
+        }
+    };
     useEffect(() => {
         api.get('/GetAllPayments')
             .then(response => {
@@ -53,9 +72,7 @@ function Payments() {
                         </button>
                         {openDropdownId === c.id && (
                             <ul className="dropdown-menu">
-                                <li>Посмотреть</li>
-                                <li>Изменить статус</li>
-                                <li>Удалить</li>
+                                <li onClick={() => handleConfirmPayment(c.id)}>Подтвердить платёж</li>
                             </ul>
                         )}
                     </td>

@@ -51,6 +51,10 @@ function BookingDetails() {
             </div>
             <div className="booking-card">
                 <div className="booking-field">
+                    <span className="label">Имя гостя:</span>
+                    <span>{booking.guest_name}</span>
+                </div>
+                <div className="booking-field">
                     <span className="label">Статус:</span>
                     <span>{booking.booking_status}</span>
                 </div>

@@ -32,7 +32,6 @@ function Bookings() {
         fetchBookings();
     }, []);
 
-    // Обработка подтверждения бронирования
     const handleConfirmBooking = async (bookingId) => {
         try {
             setConfirming(true);
@@ -46,8 +45,6 @@ function Bookings() {
             setConfirming(false);
         }
     };
-
-// В JSX для <li>:
 
 
     const handleOpenModal = () => setIsModalOpen(true);
@@ -86,8 +83,8 @@ function Bookings() {
                     {bookings.map((c) => (
                         <tr key={c.id}>
                             <td>{c.id}</td>
-                            <td>{new Date(c.start_date).toLocaleString()}</td>
-                            <td>{new Date(c.end_date).toLocaleString()}</td>
+                            <td>{new Date(c.start_date).toLocaleDateString()}</td>
+                            <td>{new Date(c.end_date).toLocaleDateString()}</td>
                             <td>{c.booking_status}</td>
                             <td>{c.room}</td>
                             <td className="dropdown-cell">
@@ -100,7 +97,6 @@ function Bookings() {
                                             <Link to={`/bookings/${c.id}`}>Посмотреть</Link>
                                         </li>
                                         <li onClick={() => handleConfirmBooking(c.id)}>{confirming ? 'Заселяется...' : 'Заселить...'}</li>
-                                        <li>Удалить</li>
                                     </ul>
                                 )}
                             </td>

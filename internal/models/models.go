@@ -47,6 +47,7 @@ type BookingResponse struct {
 	BookingStatus  string     `json:"booking_status"`
 	DiscountAmount float64    `json:"discount_amount"`
 	Room           int        `json:"room"`
+	GuestName      string     `json:"guest_name"`
 }
 
 // BookingStatus represents the booking_statuses table
